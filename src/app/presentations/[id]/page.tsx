@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import WysiwygSlideEditor from '@/components/WysiwygSlideEditor'
 import AddSlideButton from '@/components/AddSlideButton'
+import { updateSlide, deleteSlide, updatePresentation, applyThemeToAllSlides, reorderSlides } from '@/lib/actions'
 
 interface Slide {
   id: string
@@ -39,6 +40,8 @@ export default function PresentationPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null)
   const [applyToAllSlides, setApplyToAllSlides] = useState(false)
+  const [draggedSlideId, setDraggedSlideId] = useState<string | null>(null)
+  const [dragOverSlideId, setDragOverSlideId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPresentation()
@@ -61,25 +64,21 @@ export default function PresentationPage() {
 
   const handleSaveSlide = async (slide: Slide) => {
     try {
-      const response = await fetch(`/api/slides/${slide.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: slide.title,
-          content: slide.content,
-          layout: slide.layout,
-          imageUrl: slide.imageUrl,
-          backgroundColor: slide.backgroundColor,
-          textColor: slide.textColor,
-          headingColor: slide.headingColor,
-          textAlign: slide.textAlign,
-        }),
-      })
+      const formData = new FormData()
+      formData.append('slideId', slide.id)
+      formData.append('title', slide.title)
+      formData.append('content', slide.content)
+      formData.append('layout', slide.layout)
+      if (slide.imageUrl) formData.append('imageUrl', slide.imageUrl)
+      if (slide.backgroundColor) formData.append('backgroundColor', slide.backgroundColor)
+      if (slide.textColor) formData.append('textColor', slide.textColor)
+      if (slide.headingColor) formData.append('headingColor', slide.headingColor)
+      if (slide.textAlign) formData.append('textAlign', slide.textAlign)
 
-      if (!response.ok) {
-        throw new Error('Failed to save slide')
+      const result = await updateSlide(formData)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save slide')
       }
 
       await fetchPresentation()
@@ -95,12 +94,10 @@ export default function PresentationPage() {
     }
 
     try {
-      const response = await fetch(`/api/slides/${slideId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete slide')
+      const result = await deleteSlide(slideId)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete slide')
       }
 
       await fetchPresentation()
@@ -143,26 +140,12 @@ export default function PresentationPage() {
     if (!presentation) return
     
     try {
-      const slideUpdatePromises = presentation.slides.map(slide => 
-        fetch(`/api/slides/${slide.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: slide.title,
-            content: slide.content,
-            layout: slide.layout,
-            imageUrl: slide.imageUrl,
-            backgroundColor: themeUpdates.backgroundColor,
-            textColor: themeUpdates.textColor,
-            headingColor: themeUpdates.headingColor,
-            textAlign: slide.textAlign,
-          }),
-        })
-      )
+      const result = await applyThemeToAllSlides(presentation.id, themeUpdates)
       
-      await Promise.all(slideUpdatePromises)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to apply theme to all slides')
+      }
+      
       await fetchPresentation()
     } catch (error) {
       console.error('Error applying theme to all slides:', error)
@@ -171,16 +154,19 @@ export default function PresentationPage() {
 
   const handleUpdatePresentation = async (updates: Partial<Presentation>) => {
     try {
-      const response = await fetch(`/api/presentations/${params.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      })
+      const formData = new FormData()
+      formData.append('presentationId', params.id as string)
+      
+      if (updates.title) formData.append('title', updates.title)
+      if (updates.description) formData.append('description', updates.description)
+      if (updates.primaryColor) formData.append('primaryColor', updates.primaryColor)
+      if (updates.secondaryColor) formData.append('secondaryColor', updates.secondaryColor)
+      if (updates.fontFamily) formData.append('fontFamily', updates.fontFamily)
 
-      if (!response.ok) {
-        throw new Error('Failed to update presentation')
+      const result = await updatePresentation(formData)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update presentation')
       }
 
       await fetchPresentation()
@@ -190,6 +176,60 @@ export default function PresentationPage() {
     } catch (error) {
       console.error('Error updating presentation:', error)
     }
+  }
+
+  const handleDragStart = (e: React.DragEvent, slideId: string) => {
+    setDraggedSlideId(slideId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, slideId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverSlideId(slideId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverSlideId(null)
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetSlideId: string) => {
+    e.preventDefault()
+    
+    if (!draggedSlideId || !presentation || draggedSlideId === targetSlideId) {
+      setDraggedSlideId(null)
+      setDragOverSlideId(null)
+      return
+    }
+
+    const slides = [...presentation.slides].sort((a, b) => a.order - b.order)
+    const draggedIndex = slides.findIndex(s => s.id === draggedSlideId)
+    const targetIndex = slides.findIndex(s => s.id === targetSlideId)
+    
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    // Reorder the slides array
+    const reorderedSlides = [...slides]
+    const [draggedSlide] = reorderedSlides.splice(draggedIndex, 1)
+    reorderedSlides.splice(targetIndex, 0, draggedSlide)
+
+    // Create new order assignments
+    const slideOrders = reorderedSlides.map((slide, index) => ({
+      id: slide.id,
+      order: index + 1
+    }))
+
+    try {
+      const result = await reorderSlides(presentation.id, slideOrders)
+      if (result.success) {
+        await fetchPresentation()
+      }
+    } catch (error) {
+      console.error('Error reordering slides:', error)
+    }
+
+    setDraggedSlideId(null)
+    setDragOverSlideId(null)
   }
 
   if (loading) {
@@ -282,14 +322,37 @@ export default function PresentationPage() {
         </motion.div>
 
         <div className="space-y-6">
-          <AddSlideButton
-            presentationId={presentation.id}
-            afterOrder={0}
-            onSlideAdded={fetchPresentation}
-          />
-          
           {presentation.slides.map((slide, index) => (
-            <div key={slide.id}>
+            <motion.div 
+              key={slide.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, slide.id)}
+              onDragOver={(e) => handleDragOver(e, slide.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, slide.id)}
+              className={`group relative transition-all duration-200 ${
+                draggedSlideId === slide.id ? 'opacity-50 scale-95' : ''
+              } ${
+                dragOverSlideId === slide.id && draggedSlideId !== slide.id
+                  ? 'ring-2 ring-blue-500 ring-opacity-50 bg-blue-50'
+                  : ''
+              }`}
+              whileHover={{ scale: 1.01 }}
+              layout
+            >
+              <div className="absolute -left-12 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-grab active:cursor-grabbing">
+                <div className="flex flex-col items-center justify-center w-8 h-12 bg-gradient-to-b from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-lg shadow-lg border border-gray-300 group">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-600 group-hover:text-gray-800 transition-colors">
+                    <circle cx="9" cy="6" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="6" r="1.5" fill="currentColor"/>
+                    <circle cx="9" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="9" cy="18" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="18" r="1.5" fill="currentColor"/>
+                  </svg>
+                </div>
+              </div>
+              
               <WysiwygSlideEditor
                 slide={slide}
                 presentation={presentation}
@@ -309,7 +372,7 @@ export default function PresentationPage() {
                 afterOrder={slide.order}
                 onSlideAdded={fetchPresentation}
               />
-            </div>
+            </motion.div>
           ))}
         </div>
 
@@ -322,13 +385,17 @@ export default function PresentationPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               No slides found
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-6">
               This presentation doesn't have any slides yet.
             </p>
+            <AddSlideButton
+              presentationId={presentation.id}
+              afterOrder={0}
+              onSlideAdded={fetchPresentation}
+            />
           </motion.div>
         )}
       </div>
-
     </motion.main>
   )
 }

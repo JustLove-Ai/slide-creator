@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
+import { createSlide } from '@/lib/actions'
 
 interface AddSlideButtonProps {
   presentationId: string
@@ -17,26 +18,20 @@ export default function AddSlideButton({ presentationId, afterOrder, onSlideAdde
     console.log('Creating slide with:', { presentationId, afterOrder })
     setIsLoading(true)
     try {
-      const response = await fetch('/api/slides', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          presentationId,
-          title: 'New Slide',
-          content: 'Click to edit content',
-          slideType: 'CONTENT',
-          layout: 'TEXT_ONLY',
-          order: afterOrder + 1,
-        }),
-      })
+      const formData = new FormData()
+      formData.append('presentationId', presentationId)
+      formData.append('title', 'New Slide')
+      formData.append('content', 'Click to edit content')
+      formData.append('slideType', 'CONTENT')
+      formData.append('layout', 'TEXT_ONLY')
+      formData.append('order', (afterOrder + 1).toString())
 
-      if (response.ok) {
+      const result = await createSlide(formData)
+      
+      if (result.success) {
         onSlideAdded()
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to create slide:', response.status, errorData)
+        console.error('Failed to create slide:', result.error)
       }
     } catch (error) {
       console.error('Error creating slide:', error)

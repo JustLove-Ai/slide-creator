@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(set PORT=3011)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_install",
+      "Bash(npm run lint)",
+      "Bash(npx prisma:*)",
+      "Read(/c:\\Users\\spoil\\Downloads/**)",
+      "Read(/c:\\Users\\spoil\\Downloads/**)",
+      "Bash(npx tsc:*)",
+      "Bash(rd:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
