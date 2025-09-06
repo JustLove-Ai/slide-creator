@@ -9,9 +9,21 @@ interface AddSlideButtonProps {
   presentationId: string
   afterOrder: number
   onSlideAdded: () => void
+  presentation?: {
+    id: string
+    primaryColor: string
+    secondaryColor: string
+    fontFamily: string
+  }
+  applyToAllSlides?: boolean
+  currentSlideTheme?: {
+    backgroundColor?: string
+    textColor?: string
+    headingColor?: string
+  }
 }
 
-export default function AddSlideButton({ presentationId, afterOrder, onSlideAdded }: AddSlideButtonProps) {
+export default function AddSlideButton({ presentationId, afterOrder, onSlideAdded, presentation, applyToAllSlides, currentSlideTheme }: AddSlideButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleCreateBlankSlide = async () => {
@@ -25,6 +37,19 @@ export default function AddSlideButton({ presentationId, afterOrder, onSlideAdde
       formData.append('slideType', 'CONTENT')
       formData.append('layout', 'TEXT_ONLY')
       formData.append('order', (afterOrder + 1).toString())
+      
+      // Apply theme if applyToAllSlides is enabled and we have theme data
+      if (applyToAllSlides && currentSlideTheme) {
+        if (currentSlideTheme.backgroundColor) {
+          formData.append('backgroundColor', currentSlideTheme.backgroundColor)
+        }
+        if (currentSlideTheme.textColor) {
+          formData.append('textColor', currentSlideTheme.textColor)
+        }
+        if (currentSlideTheme.headingColor) {
+          formData.append('headingColor', currentSlideTheme.headingColor)
+        }
+      }
 
       const result = await createSlide(formData)
       

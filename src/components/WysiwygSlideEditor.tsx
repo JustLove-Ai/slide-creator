@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Layout, 
@@ -18,10 +18,10 @@ import {
   Plus,
   Check,
   X,
-  Settings
+  Settings,
+  MessageSquare
 } from 'lucide-react'
 import LayoutSelector, { SlideLayoutType } from './LayoutSelector'
-import BackgroundSettings from './BackgroundSettings'
 import ImagePromptModal from './ImagePromptModal'
 import { parseMarkdownToHtml, htmlToPlainText } from '@/lib/markdown-utils'
 
@@ -52,6 +52,7 @@ interface WysiwygSlideEditorProps {
   presentation: Presentation
   onSave: (slide: Slide) => Promise<void>
   onDelete: (slideId: string) => Promise<void>
+  onRequestDelete: (slideId: string) => void
   onRegenerate: (slideId: string) => Promise<void>
   onUpdatePresentation: (updates: Partial<Presentation>) => Promise<void>
   onApplyThemeToAllSlides?: (themeUpdates: { backgroundColor?: string, textColor?: string, headingColor?: string }) => Promise<void>
@@ -59,6 +60,8 @@ interface WysiwygSlideEditorProps {
   onApplyToAllChange: (apply: boolean) => void
   isActive: boolean
   onActivate: () => void
+  onOpenNotes?: () => void
+  onOpenSettings?: () => void
 }
 
 export default function WysiwygSlideEditor({ 
@@ -66,16 +69,18 @@ export default function WysiwygSlideEditor({
   presentation,
   onSave, 
   onDelete, 
+  onRequestDelete,
   onRegenerate,
   onUpdatePresentation,
   onApplyThemeToAllSlides,
   applyToAllSlides,
   onApplyToAllChange,
   isActive,
-  onActivate
+  onActivate,
+  onOpenNotes,
+  onOpenSettings
 }: WysiwygSlideEditorProps) {
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [isEditingContent, setIsEditingContent] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [editTitle, setEditTitle] = useState(slide.title)
   const [editContent, setEditContent] = useState(slide.content)
   const [showImageOptions, setShowImageOptions] = useState(false)
@@ -83,7 +88,6 @@ export default function WysiwygSlideEditor({
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [showImagePrompt, setShowImagePrompt] = useState(false)
   
   const slideRef = useRef<HTMLDivElement>(null)
@@ -134,38 +138,21 @@ export default function WysiwygSlideEditor({
     }
   }
 
-  const handleSaveTitle = async () => {
+  const handleSave = async () => {
     setIsLoading(true)
     setIsSaving(true)
     try {
       await onSave({
         ...slide,
-        title: editTitle.trim() || slide.title
-      })
-      setIsEditingTitle(false)
-      setHasUnsavedChanges(false)
-    } catch (error) {
-      console.error('Error saving title:', error)
-      setEditTitle(slide.title) // Revert on error
-    } finally {
-      setIsLoading(false)
-      setIsSaving(false)
-    }
-  }
-
-  const handleSaveContent = async () => {
-    setIsLoading(true)
-    setIsSaving(true)
-    try {
-      await onSave({
-        ...slide,
+        title: editTitle.trim() || slide.title,
         content: editContent.trim() || slide.content
       })
-      setIsEditingContent(false)
+      setIsEditMode(false)
       setHasUnsavedChanges(false)
     } catch (error) {
-      console.error('Error saving content:', error)
-      setEditContent(slide.content) // Revert on error
+      console.error('Error saving slide:', error)
+      setEditTitle(slide.title)
+      setEditContent(slide.content)
     } finally {
       setIsLoading(false)
       setIsSaving(false)
@@ -188,16 +175,35 @@ export default function WysiwygSlideEditor({
     }
   }
 
-  const handleCancelEdit = (type: 'title' | 'content') => {
-    if (type === 'title') {
-      setEditTitle(slide.title)
-      setIsEditingTitle(false)
-    } else {
-      setEditContent(slide.content)
-      setIsEditingContent(false)
-    }
+  const handleCancelEdit = () => {
+    setEditTitle(slide.title)
+    setEditContent(slide.content)
+    setIsEditMode(false)
     setHasUnsavedChanges(false)
   }
+
+  const enterEditMode = () => {
+    setEditTitle(slide.title)
+    setEditContent(slide.content)
+    setIsEditMode(true)
+    setHasUnsavedChanges(false)
+  }
+
+  // Handle ESC key globally when in edit mode
+  const handleGlobalKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && isEditMode) {
+      e.preventDefault()
+      handleCancelEdit()
+    }
+  }
+
+  // Add global event listener for ESC
+  React.useEffect(() => {
+    if (isEditMode) {
+      document.addEventListener('keydown', handleGlobalKeyDown)
+      return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+    }
+  }, [isEditMode])
 
   const handleImageUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -341,77 +347,63 @@ export default function WysiwygSlideEditor({
     return renderPlaceholderImage(className)
   }
 
-  const renderEditableText = (
-    text: string, 
-    isEditing: boolean, 
-    editValue: string, 
-    setEditValue: (value: string) => void, 
-    onSave: () => void, 
-    onCancel: () => void,
-    className: string,
-    style: React.CSSProperties,
-    isTextarea: boolean = false
-  ) => {
-    if (isEditing) {
+  const renderEditableTitle = (className: string, style: React.CSSProperties) => {
+    if (isEditMode) {
       return (
-        <div className="relative">
-          {isTextarea ? (
-            <textarea
-              value={editValue}
-              onChange={(e) => {
-                setEditValue(e.target.value)
-                setHasUnsavedChanges(true)
-              }}
-              className={`${className} border-2 border-blue-500 rounded-md p-2 resize-none bg-white`}
-              style={style}
-              rows={6}
-              autoFocus
-            />
-          ) : (
-            <input
-              type="text"
-              value={editValue}
-              onChange={(e) => {
-                setEditValue(e.target.value)
-                setHasUnsavedChanges(true)
-              }}
-              className={`${className} border-2 border-blue-500 rounded-md p-2 bg-white`}
-              style={style}
-              autoFocus
-            />
-          )}
-          <div className="absolute -right-2 -top-2 flex gap-1">
-            <button
-              onClick={onSave}
-              className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center hover:bg-green-700 text-xs"
-            >
-              <Check className="w-3 h-3" />
-            </button>
-            <button
-              onClick={onCancel}
-              className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 text-xs"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => {
+            setEditTitle(e.target.value)
+            setHasUnsavedChanges(true)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              handleSave()
+            }
+          }}
+          className={`${className} border-2 border-primary/30 rounded-lg p-2 bg-background/80 backdrop-blur-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all`}
+          style={style}
+          placeholder="Enter title..."
+          autoFocus={editTitle === slide.title}
+        />
       )
     }
 
     return (
-      <div className="relative group">
-        <div
-          className={`${className} cursor-pointer`}
-          style={style}
-          dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(text) }}
+      <div
+        className={className}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.title) }}
+      />
+    )
+  }
+
+  const renderEditableContent = (className: string, style: React.CSSProperties) => {
+    if (isEditMode) {
+      return (
+        <textarea
+          value={editContent}
+          onChange={(e) => {
+            setEditContent(e.target.value)
+            setHasUnsavedChanges(true)
+          }}
+          className={`${className} border-2 border-primary/30 rounded-lg p-3 bg-background/80 backdrop-blur-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none`}
+          style={{ ...style, minHeight: '120px' }}
+          placeholder="Enter slide content..."
+          rows={6}
+          autoFocus={editContent === slide.content}
         />
-        <button
-          onClick={() => isTextarea ? setIsEditingContent(true) : setIsEditingTitle(true)}
-          className="absolute -right-2 -top-2 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-700"
-        >
-          <Edit3 className="w-3 h-3" />
-        </button>
-      </div>
+      )
+    }
+
+    return (
+      <div
+        className={className}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+      />
     )
   }
 
@@ -423,27 +415,13 @@ export default function WysiwygSlideEditor({
       case 'TITLE_COVER':
         return (
           <div className="h-full flex flex-col items-center justify-center text-center p-12">
-            {renderEditableText(
-              slide.title,
-              isEditingTitle,
-              editTitle,
-              setEditTitle,
-              handleSaveTitle,
-              () => handleCancelEdit('title'),
+            {renderEditableTitle(
               "text-6xl font-bold mb-6 outline-none w-full text-center",
-              titleStyle,
-              false
+              titleStyle
             )}
-            {renderEditableText(
-              slide.content,
-              isEditingContent,
-              editContent,
-              setEditContent,
-              handleSaveContent,
-              () => handleCancelEdit('content'),
+            {renderEditableContent(
               "text-xl opacity-90 max-w-3xl outline-none w-full text-center",
-              contentStyle,
-              true
+              contentStyle
             )}
           </div>
         )
@@ -455,27 +433,13 @@ export default function WysiwygSlideEditor({
               {renderImage('w-full h-full rounded-lg')}
             </div>
             <div className="w-1/2 p-8 flex flex-col justify-center">
-              {renderEditableText(
-                slide.title,
-                isEditingTitle,
-                editTitle,
-                setEditTitle,
-                handleSaveTitle,
-                () => handleCancelEdit('title'),
+              {renderEditableTitle(
                 "text-4xl font-bold mb-6 outline-none w-full",
-                titleStyle,
-                false
+                titleStyle
               )}
-              {renderEditableText(
-                slide.content,
-                isEditingContent,
-                editContent,
-                setEditContent,
-                handleSaveContent,
-                () => handleCancelEdit('content'),
+              {renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
-                contentStyle,
-                true
+                contentStyle
               )}
             </div>
           </div>
@@ -485,27 +449,13 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full flex">
             <div className="w-1/2 p-8 flex flex-col justify-center">
-              {renderEditableText(
-                slide.title,
-                isEditingTitle,
-                editTitle,
-                setEditTitle,
-                handleSaveTitle,
-                () => handleCancelEdit('title'),
+              {renderEditableTitle(
                 "text-4xl font-bold mb-6 outline-none w-full",
-                titleStyle,
-                false
+                titleStyle
               )}
-              {renderEditableText(
-                slide.content,
-                isEditingContent,
-                editContent,
-                setEditContent,
-                handleSaveContent,
-                () => handleCancelEdit('content'),
+              {renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
-                contentStyle,
-                true
+                contentStyle
               )}
             </div>
             <div className="w-1/2 p-8">
@@ -520,16 +470,9 @@ export default function WysiwygSlideEditor({
             {renderImage('w-full h-full')}
             {slide.title && (
               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-6">
-                {renderEditableText(
-                  slide.title,
-                  isEditingTitle,
-                  editTitle,
-                  setEditTitle,
-                  handleSaveTitle,
-                  () => handleCancelEdit('title'),
+                {renderEditableTitle(
                   "text-3xl font-bold text-white outline-none w-full",
-                  { color: 'white' },
-                  false
+                  { color: 'white' }
                 )}
               </div>
             )}
@@ -540,27 +483,13 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full flex">
             <div className="w-2/3 p-8">
-              {renderEditableText(
-                slide.title,
-                isEditingTitle,
-                editTitle,
-                setEditTitle,
-                handleSaveTitle,
-                () => handleCancelEdit('title'),
+              {renderEditableTitle(
                 "text-4xl font-bold mb-8 outline-none w-full",
-                titleStyle,
-                false
+                titleStyle
               )}
-              {renderEditableText(
-                slide.content,
-                isEditingContent,
-                editContent,
-                setEditContent,
-                handleSaveContent,
-                () => handleCancelEdit('content'),
+              {renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
-                contentStyle,
-                true
+                contentStyle
               )}
             </div>
             <div className="w-1/3 p-8">
@@ -572,29 +501,15 @@ export default function WysiwygSlideEditor({
       case 'TWO_COLUMN':
         return (
           <div className="h-full p-8">
-            {renderEditableText(
-              slide.title,
-              isEditingTitle,
-              editTitle,
-              setEditTitle,
-              handleSaveTitle,
-              () => handleCancelEdit('title'),
+            {renderEditableTitle(
               "text-4xl font-bold mb-8 text-center outline-none w-full",
-              titleStyle,
-              false
+              titleStyle
             )}
             <div className="flex gap-12 h-full">
               <div className="w-1/2">
-                {renderEditableText(
-                  slide.content,
-                  isEditingContent,
-                  editContent,
-                  setEditContent,
-                  handleSaveContent,
-                  () => handleCancelEdit('content'),
+                {renderEditableContent(
                   "text-lg leading-relaxed outline-none w-full h-full",
-                  contentStyle,
-                  true
+                  contentStyle
                 )}
               </div>
               <div className="w-1/2">
@@ -612,27 +527,13 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full relative flex items-center justify-center text-center p-12">
             <div className="relative z-10">
-              {renderEditableText(
-                slide.title,
-                isEditingTitle,
-                editTitle,
-                setEditTitle,
-                handleSaveTitle,
-                () => handleCancelEdit('title'),
+              {renderEditableTitle(
                 "text-5xl font-bold mb-6 drop-shadow-lg outline-none w-full text-center",
-                { color: 'white' },
-                false
+                { color: 'white' }
               )}
-              {renderEditableText(
-                slide.content,
-                isEditingContent,
-                editContent,
-                setEditContent,
-                handleSaveContent,
-                () => handleCancelEdit('content'),
+              {renderEditableContent(
                 "text-xl drop-shadow-md outline-none w-full text-center",
-                { color: 'white' },
-                true
+                { color: 'white' }
               )}
             </div>
             <div className="absolute inset-0 bg-black bg-opacity-40 rounded-xl"></div>
@@ -645,7 +546,7 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full p-8 flex flex-col relative">
             {/* AI Generate overlay for new slides */}
-            {isNewSlide && (
+            {isNewSlide && !isEditMode && (
               <div className="absolute top-4 right-4">
                 <button
                   onClick={handleAIGenerate}
@@ -657,27 +558,13 @@ export default function WysiwygSlideEditor({
               </div>
             )}
             
-            {renderEditableText(
-              slide.title,
-              isEditingTitle,
-              editTitle,
-              setEditTitle,
-              handleSaveTitle,
-              () => handleCancelEdit('title'),
+            {renderEditableTitle(
               "text-4xl font-bold mb-8 outline-none w-full",
-              titleStyle,
-              false
+              titleStyle
             )}
-            {renderEditableText(
-              slide.content,
-              isEditingContent,
-              editContent,
-              setEditContent,
-              handleSaveContent,
-              () => handleCancelEdit('content'),
+            {renderEditableContent(
               "text-lg leading-relaxed flex-1 outline-none w-full",
-              contentStyle,
-              true
+              contentStyle
             )}
           </div>
         )
@@ -722,73 +609,114 @@ export default function WysiwygSlideEditor({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleQuickSave}
-            disabled={isSaving || (!hasUnsavedChanges && !isEditingTitle && !isEditingContent)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              hasUnsavedChanges || isEditingTitle || isEditingContent
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                {hasUnsavedChanges || isEditingTitle || isEditingContent ? 'Save' : 'Saved'}
-              </>
-            )}
-          </button>
-          
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
-          >
-            <Settings className="w-4 h-4" />
-            Design
-          </button>
-          
-          <div className="w-px h-6 bg-gray-300" />
-          
-          <button
-            onClick={() => onRegenerate(slide.id)}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-1 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Regenerate
-          </button>
-          
-          <button
-            onClick={() => onDelete(slide.id)}
-            className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
+          {/* Edit Mode Toggle */}
+          {isEditMode ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors bg-green-600 text-white hover:bg-green-700"
+              >
+                {isSaving ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                    />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Save
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors bg-gray-600 text-white hover:bg-gray-700"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={enterEditMode}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit
+              </button>
+              
+              {onOpenNotes && (
+                <button
+                  onClick={onOpenNotes}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  title="Speaker Notes"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </button>
+              )}
+              
+              {onOpenSettings && (
+                <button
+                  onClick={onOpenSettings}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  title="Design Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
+              
+              <button
+                onClick={() => onRegenerate(slide.id)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                title="Regenerate with AI"
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => onRequestDelete(slide.id)}
+                className="p-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                title="Delete Slide"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Main Slide */}
       <motion.div
         ref={slideRef}
-        className={`w-full aspect-[16/9] rounded-xl shadow-lg overflow-hidden cursor-pointer border-2 transition-all ${
-          isActive ? 'border-blue-500 shadow-xl' : 'border-gray-200 hover:border-gray-300'
+        className={`w-full aspect-[16/9] rounded-xl shadow-lg overflow-hidden cursor-pointer border-2 slide-transition ${
+          isEditMode 
+            ? 'slide-edit-mode border-blue-500 shadow-xl' 
+            : isActive 
+              ? 'border-blue-500 shadow-xl' 
+              : 'border-gray-200 hover:border-gray-300'
         }`}
         style={getSlideBackground()}
-        onClick={onActivate}
-        whileHover={{ scale: 1.01 }}
+        onClick={!isEditMode ? onActivate : undefined}
+        whileHover={!isEditMode ? { scale: 1.01 } : {}}
         transition={{ duration: 0.2 }}
       >
         {renderSlideContent()}
+        
+        {/* Edit Mode Indicator */}
+        {isEditMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg shadow-lg text-xs font-medium">
+              <Edit3 className="w-3 h-3" />
+              <span>Editing Mode - Click text to edit</span>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Image Options Modal */}
@@ -860,20 +788,6 @@ export default function WysiwygSlideEditor({
         className="hidden"
       />
 
-      {/* Background Settings Panel */}
-      <BackgroundSettings
-        presentation={presentation}
-        slide={slide}
-        onUpdatePresentation={onUpdatePresentation}
-        onUpdateSlide={async (updates) => {
-          await onSave({ ...slide, ...updates })
-        }}
-        onApplyThemeToAllSlides={onApplyThemeToAllSlides}
-        applyToAllSlides={applyToAllSlides}
-        onApplyToAllChange={onApplyToAllChange}
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
 
       {/* Image Prompt Modal */}
       <ImagePromptModal

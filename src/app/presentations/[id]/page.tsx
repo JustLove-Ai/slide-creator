@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { X, MessageSquare, Sparkles, Palette, Type, Layout } from 'lucide-react'
 import WysiwygSlideEditor from '@/components/WysiwygSlideEditor'
 import AddSlideButton from '@/components/AddSlideButton'
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 import { updateSlide, deleteSlide, updatePresentation, applyThemeToAllSlides, reorderSlides } from '@/lib/actions'
 import { SlideContent } from '@/lib/ai-service'
 
@@ -51,6 +52,8 @@ export default function PresentationPage() {
   const [editingNotes, setEditingNotes] = useState('')
   const [hasNotesChanged, setHasNotesChanged] = useState(false)
   const [loadingNotes, setLoadingNotes] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [slideToDelete, setSlideToDelete] = useState<string | null>(null)
 
   const fetchPresentation = useCallback(async () => {
     try {
@@ -70,6 +73,16 @@ export default function PresentationPage() {
   useEffect(() => {
     fetchPresentation()
   }, [fetchPresentation])
+
+  // Sync editing notes when active slide changes (but not when there are unsaved changes)
+  useEffect(() => {
+    if (activeSlideId && presentation && showNotesSidebar && !hasNotesChanged) {
+      const activeSlide = presentation.slides.find(s => s.id === activeSlideId)
+      if (activeSlide) {
+        setEditingNotes(activeSlide.narration || '')
+      }
+    }
+  }, [activeSlideId, presentation, showNotesSidebar, hasNotesChanged])
 
   const handleSaveSlide = async (slide: Slide) => {
     try {
@@ -98,11 +111,12 @@ export default function PresentationPage() {
     }
   }
 
-  const handleDeleteSlide = async (slideId: string) => {
-    if (!confirm('Are you sure you want to delete this slide?')) {
-      return
-    }
+  const handleRequestDelete = (slideId: string) => {
+    setSlideToDelete(slideId)
+    setShowDeleteModal(true)
+  }
 
+  const handleDeleteSlide = async (slideId: string) => {
     try {
       const result = await deleteSlide(slideId)
       
@@ -113,6 +127,13 @@ export default function PresentationPage() {
       await fetchPresentation()
     } catch (error) {
       console.error('Error deleting slide:', error)
+    }
+  }
+
+  const handleConfirmDelete = () => {
+    if (slideToDelete) {
+      handleDeleteSlide(slideToDelete)
+      setSlideToDelete(null)
     }
   }
 
@@ -458,6 +479,7 @@ export default function PresentationPage() {
                 presentation={presentation}
                 onSave={handleSaveSlide}
                 onDelete={handleDeleteSlide}
+                onRequestDelete={handleRequestDelete}
                 onRegenerate={handleRegenerateSlide}
                 onSplitSlide={handleSplitSlide}
                 onUpdatePresentation={handleUpdatePresentation}
@@ -468,12 +490,13 @@ export default function PresentationPage() {
                 onActivate={() => setActiveSlideId(slide.id)}
                 onOpenNotes={() => {
                   setActiveSlideId(slide.id)
-                  setEditingNotes(slide.narration || '')
-                  setHasNotesChanged(false)
+                  setShowSettingsSidebar(false) // Close settings panel
                   setShowNotesSidebar(true)
+                  // editingNotes will be synced by useEffect
                 }}
                 onOpenSettings={() => {
                   setActiveSlideId(slide.id)
+                  setShowNotesSidebar(false) // Close notes panel  
                   setShowSettingsSidebar(true)
                 }}
               />
@@ -482,6 +505,16 @@ export default function PresentationPage() {
                 presentationId={presentation.id}
                 afterOrder={slide.order}
                 onSlideAdded={fetchPresentation}
+                presentation={presentation}
+                applyToAllSlides={applyToAllSlides}
+                currentSlideTheme={activeSlideId ? (() => {
+                  const activeSlide = presentation.slides.find(s => s.id === activeSlideId)
+                  return activeSlide ? {
+                    backgroundColor: activeSlide.backgroundColor,
+                    textColor: activeSlide.textColor,
+                    headingColor: activeSlide.headingColor
+                  } : undefined
+                })() : undefined}
               />
             </motion.div>
           ))}
@@ -503,6 +536,8 @@ export default function PresentationPage() {
               presentationId={presentation.id}
               afterOrder={0}
               onSlideAdded={fetchPresentation}
+              presentation={presentation}
+              applyToAllSlides={applyToAllSlides}
             />
           </motion.div>
         )}
@@ -554,6 +589,7 @@ export default function PresentationPage() {
                           </button>
                         </div>
                         <textarea
+                          key={activeSlide.id}
                           value={editingNotes}
                           onChange={(e) => {
                             setEditingNotes(e.target.value)
@@ -755,6 +791,16 @@ export default function PresentationPage() {
             </div>
           </motion.div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setSlideToDelete(null)
+          }}
+          onConfirm={handleConfirmDelete}
+        />
       </div>
     </motion.main>
   )
