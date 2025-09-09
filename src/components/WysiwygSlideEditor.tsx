@@ -19,9 +19,10 @@ import {
   Check,
   X,
   Settings,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from 'lucide-react'
-import LayoutSelector, { SlideLayoutType } from './LayoutSelector'
+import { SlideLayoutType } from './LayoutSelector'
 import ImagePromptModal from './ImagePromptModal'
 import { parseMarkdownToHtml, htmlToPlainText } from '@/lib/markdown-utils'
 
@@ -38,6 +39,8 @@ interface Slide {
   headingColor?: string
   textAlign?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFY'
   customStyles?: string
+  showTitle?: boolean
+  showContent?: boolean
 }
 
 interface Presentation {
@@ -62,6 +65,9 @@ interface WysiwygSlideEditorProps {
   onActivate: () => void
   onOpenNotes?: () => void
   onOpenSettings?: () => void
+  onOpenLayout?: () => void
+  onOpenImage?: () => void
+  onOpenContent?: () => void
 }
 
 export default function WysiwygSlideEditor({ 
@@ -78,13 +84,14 @@ export default function WysiwygSlideEditor({
   isActive,
   onActivate,
   onOpenNotes,
-  onOpenSettings
+  onOpenSettings,
+  onOpenLayout,
+  onOpenImage,
+  onOpenContent
 }: WysiwygSlideEditorProps) {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editTitle, setEditTitle] = useState(slide.title)
   const [editContent, setEditContent] = useState(slide.content)
-  const [showImageOptions, setShowImageOptions] = useState(false)
-  const [showLayoutSelector, setShowLayoutSelector] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -94,22 +101,23 @@ export default function WysiwygSlideEditor({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getSlideBackground = () => {
-    if (slide.backgroundColor) {
-      return { backgroundColor: slide.backgroundColor }
-    }
-    
     switch (slide.layout) {
       case 'TITLE_COVER':
         return { 
           background: `linear-gradient(135deg, ${presentation.primaryColor}, ${presentation.secondaryColor})` 
         }
       case 'IMAGE_BACKGROUND':
+      case 'IMAGE_OVERLAY':
         return { 
           backgroundImage: slide.imageUrl ? `url(${slide.imageUrl})` : `linear-gradient(135deg, ${presentation.primaryColor}20, ${presentation.secondaryColor}20)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }
       default:
+        // For other layouts, apply theme color if set
+        if (slide.backgroundColor) {
+          return { backgroundColor: slide.backgroundColor }
+        }
         return { background: '#ffffff' }
     }
   }
@@ -232,8 +240,7 @@ export default function WysiwygSlideEditor({
           imageUrl
         })
         
-        setShowImageOptions(false)
-      } catch (error) {
+        } catch (error) {
         console.error('Error uploading image:', error)
       } finally {
         setIsLoading(false)
@@ -252,7 +259,6 @@ export default function WysiwygSlideEditor({
         ...slide,
         imageUrl: placeholderImageUrl
       })
-      setShowImageOptions(false)
       setShowImagePrompt(false)
     } catch (error) {
       console.error('Error generating image:', error)
@@ -303,28 +309,16 @@ export default function WysiwygSlideEditor({
         ...slide,
         imageUrl: undefined
       })
-      setShowImageOptions(false)
     } catch (error) {
       console.error('Error removing image:', error)
     }
   }
 
-  const handleLayoutChange = async (newLayout: SlideLayoutType) => {
-    try {
-      await onSave({
-        ...slide,
-        layout: newLayout
-      })
-    } catch (error) {
-      console.error('Error updating layout:', error)
-    }
-    setShowLayoutSelector(false)
-  }
 
   const renderPlaceholderImage = (className: string = '') => (
     <div 
       className={`bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors ${className}`}
-      onClick={() => setShowImageOptions(true)}
+      onClick={() => onOpenImage?.()}
     >
       <div className="text-gray-400 text-center">
         <Plus className="w-8 h-8 mx-auto mb-2" />
@@ -340,7 +334,7 @@ export default function WysiwygSlideEditor({
           src={slide.imageUrl} 
           alt="" 
           className={`object-cover cursor-pointer hover:opacity-90 transition-opacity ${className}`}
-          onClick={() => setShowImageOptions(true)}
+          onClick={() => onOpenImage?.()}
         />
       )
     }
@@ -415,11 +409,11 @@ export default function WysiwygSlideEditor({
       case 'TITLE_COVER':
         return (
           <div className="h-full flex flex-col items-center justify-center text-center p-12">
-            {renderEditableTitle(
+            {slide.showTitle !== false && renderEditableTitle(
               "text-6xl font-bold mb-6 outline-none w-full text-center",
               titleStyle
             )}
-            {renderEditableContent(
+            {slide.showContent !== false && renderEditableContent(
               "text-xl opacity-90 max-w-3xl outline-none w-full text-center",
               contentStyle
             )}
@@ -433,11 +427,11 @@ export default function WysiwygSlideEditor({
               {renderImage('w-full h-full rounded-lg')}
             </div>
             <div className="w-1/2 p-8 flex flex-col justify-center">
-              {renderEditableTitle(
+              {slide.showTitle !== false && renderEditableTitle(
                 "text-4xl font-bold mb-6 outline-none w-full",
                 titleStyle
               )}
-              {renderEditableContent(
+              {slide.showContent !== false && renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
                 contentStyle
               )}
@@ -449,11 +443,11 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full flex">
             <div className="w-1/2 p-8 flex flex-col justify-center">
-              {renderEditableTitle(
+              {slide.showTitle !== false && renderEditableTitle(
                 "text-4xl font-bold mb-6 outline-none w-full",
                 titleStyle
               )}
-              {renderEditableContent(
+              {slide.showContent !== false && renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
                 contentStyle
               )}
@@ -470,7 +464,7 @@ export default function WysiwygSlideEditor({
             {renderImage('w-full h-full')}
             {slide.title && (
               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-6">
-                {renderEditableTitle(
+                {slide.showTitle !== false && renderEditableTitle(
                   "text-3xl font-bold text-white outline-none w-full",
                   { color: 'white' }
                 )}
@@ -483,11 +477,11 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full flex">
             <div className="w-2/3 p-8">
-              {renderEditableTitle(
+              {slide.showTitle !== false && renderEditableTitle(
                 "text-4xl font-bold mb-8 outline-none w-full",
                 titleStyle
               )}
-              {renderEditableContent(
+              {slide.showContent !== false && renderEditableContent(
                 "text-lg leading-relaxed outline-none w-full",
                 contentStyle
               )}
@@ -501,13 +495,13 @@ export default function WysiwygSlideEditor({
       case 'TWO_COLUMN':
         return (
           <div className="h-full p-8">
-            {renderEditableTitle(
+            {slide.showTitle !== false && renderEditableTitle(
               "text-4xl font-bold mb-8 text-center outline-none w-full",
               titleStyle
             )}
             <div className="flex gap-12 h-full">
               <div className="w-1/2">
-                {renderEditableContent(
+                {slide.showContent !== false && renderEditableContent(
                   "text-lg leading-relaxed outline-none w-full h-full",
                   contentStyle
                 )}
@@ -523,15 +517,67 @@ export default function WysiwygSlideEditor({
           </div>
         )
 
+      case 'TITLE_ONLY':
+        return (
+          <div className="h-full flex items-center justify-center text-center p-12">
+            {slide.showTitle !== false && renderEditableTitle(
+              "text-6xl font-bold outline-none w-full text-center",
+              titleStyle
+            )}
+          </div>
+        )
+
+      case 'QUOTE_LARGE':
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center p-16">
+            <div className="max-w-4xl">
+              <div className="text-6xl text-gray-300 mb-6">"</div>
+              {slide.showContent !== false && renderEditableContent(
+                "text-3xl font-light italic mb-8 outline-none w-full text-center leading-relaxed",
+                contentStyle
+              )}
+              {slide.showTitle !== false && renderEditableTitle(
+                "text-xl font-semibold outline-none w-full text-center",
+                titleStyle
+              )}
+            </div>
+          </div>
+        )
+
+      case 'TIMELINE':
+        return (
+          <div className="h-full p-8">
+            {slide.showTitle !== false && renderEditableTitle(
+              "text-4xl font-bold mb-8 text-center outline-none w-full",
+              titleStyle
+            )}
+            <div className="relative">
+              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-blue-500"></div>
+              <div className="space-y-8 ml-16">
+                {slide.content.split('\n').filter(item => item.trim()).map((item, index) => (
+                  <div key={index} className="relative">
+                    <div className="absolute -left-16 top-2 w-4 h-4 bg-blue-500 rounded-full border-4 border-white"></div>
+                    <div 
+                      className="text-lg leading-relaxed outline-none"
+                      style={contentStyle}
+                      dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(item) }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
       case 'IMAGE_BACKGROUND':
         return (
           <div className="h-full relative flex items-center justify-center text-center p-12">
             <div className="relative z-10">
-              {renderEditableTitle(
+              {slide.showTitle !== false && renderEditableTitle(
                 "text-5xl font-bold mb-6 drop-shadow-lg outline-none w-full text-center",
                 { color: 'white' }
               )}
-              {renderEditableContent(
+              {slide.showContent !== false && renderEditableContent(
                 "text-xl drop-shadow-md outline-none w-full text-center",
                 { color: 'white' }
               )}
@@ -558,11 +604,11 @@ export default function WysiwygSlideEditor({
               </div>
             )}
             
-            {renderEditableTitle(
+            {slide.showTitle !== false && renderEditableTitle(
               "text-4xl font-bold mb-8 outline-none w-full",
               titleStyle
             )}
-            {renderEditableContent(
+            {slide.showContent !== false && renderEditableContent(
               "text-lg leading-relaxed flex-1 outline-none w-full",
               contentStyle
             )}
@@ -588,24 +634,6 @@ export default function WysiwygSlideEditor({
             {slide.slideType.replace('_', ' ')}
           </span>
           
-          <div className="relative">
-            <button
-              onClick={() => setShowLayoutSelector(!showLayoutSelector)}
-              className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <Layout className="w-4 h-4" />
-              {slide.layout.replace('_', ' ').toLowerCase()}
-            </button>
-            
-            {showLayoutSelector && (
-              <div className="absolute top-full left-0 mt-1 z-50">
-                <LayoutSelector 
-                  currentLayout={slide.layout} 
-                  onLayoutChange={handleLayoutChange}
-                />
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -670,6 +698,36 @@ export default function WysiwygSlideEditor({
                   <Settings className="w-4 h-4" />
                 </button>
               )}
+
+              {onOpenLayout && (
+                <button
+                  onClick={onOpenLayout}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  title="Layout Templates"
+                >
+                  <Layout className="w-4 h-4" />
+                </button>
+              )}
+
+              {onOpenImage && (
+                <button
+                  onClick={onOpenImage}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  title="Image Options"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+              )}
+
+              {onOpenContent && (
+                <button
+                  onClick={onOpenContent}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  title="Content Visibility"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              )}
               
               <button
                 onClick={() => onRegenerate(slide.id)}
@@ -719,65 +777,6 @@ export default function WysiwygSlideEditor({
         )}
       </motion.div>
 
-      {/* Image Options Modal */}
-      <AnimatePresence>
-        {showImageOptions && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={() => setShowImageOptions(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl p-6 max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold mb-4">Add or Replace Image</h3>
-              
-              <div className="space-y-3">
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Upload className="w-5 h-5 text-blue-600" />
-                  <div className="text-left">
-                    <div className="font-medium">Upload Image</div>
-                    <div className="text-sm text-gray-500">Choose from your device</div>
-                  </div>
-                </button>
-                
-                <button 
-                  onClick={() => setShowImagePrompt(true)}
-                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <div className="text-left">
-                    <div className="font-medium">Generate with AI</div>
-                    <div className="text-sm text-gray-500">Create image from description</div>
-                  </div>
-                </button>
-
-                {slide.imageUrl && (
-                  <button 
-                    onClick={handleRemoveImage}
-                    className="w-full flex items-center gap-3 p-4 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    <div className="text-left">
-                      <div className="font-medium">Remove Image</div>
-                      <div className="text-sm text-red-400">Delete current image</div>
-                    </div>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Hidden file input */}
       <input

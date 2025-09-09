@@ -9,29 +9,80 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model VoiceProfile {
+  id            String         @id @default(cuid()) @map("_id")
+  name          String         // "Professional", "Academic", "Marketing", etc.
+  instructions  String         // Legacy field for backward compatibility
+  
+  // Structured categories as arrays
+  tone          String[]       @default([]) // ["Professional", "Casual", "Formal", "Friendly"]
+  audience      String[]       @default([]) // ["Executives", "Students", "General", "Technical"]
+  objective     String[]       @default([]) // ["Educate", "Persuade", "Inform", "Sell"]
+  brandVoice    String[]       @default([]) // ["Company values", "Mission focused", "Innovation leader"]
+  contentStyle  String[]       @default([]) // ["Use examples", "Avoid jargon", "Include statistics"]
+  restrictions  String[]       @default([]) // ["Don't mention competitors", "Avoid technical terms"]
+  other         String[]       @default([]) // Catchall for custom instructions
+  
+  isDefault     Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  presentations Presentation[]
+}
+
+model Framework {
+  id            String           @id @default(cuid()) @map("_id")
+  name          String           // "What-Why-How", "Top 10 Listicle", "Webinar", etc.
+  description   String?          // Brief description of the framework
+  isDefault     Boolean          @default(false)
+  isCustom      Boolean          @default(false) // User can customize defaults
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  slides        FrameworkSlide[]
+  presentations Presentation[]
+}
+
+model FrameworkSlide {
+  id           String      @id @default(cuid()) @map("_id")
+  frameworkId  String
+  framework    Framework   @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  title        String      // "Introduction", "Problem Statement", etc.
+  instructions String      // "Introduce the topic and capture attention..."
+  slideType    SlideType
+  layout       SlideLayout @default(TEXT_ONLY)
+  order        Int
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([frameworkId, order])
 }
 
 model Presentation {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid()) @map("_id")
   title           String
-  description     String?
   prompt          String
-  theme           String   @default("modern")
-  primaryColor    String   @default("#3b82f6")
-  secondaryColor  String   @default("#1e40af")
-  fontFamily      String   @default("Inter")
-  backgroundStyle String   @default("gradient")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  theme           String        @default("modern")
+  primaryColor    String        @default("#3b82f6")
+  secondaryColor  String        @default("#1e40af")
+  fontFamily      String        @default("Inter")
+  backgroundStyle String        @default("gradient")
+  voiceProfileId  String?
+  voiceProfile    VoiceProfile? @relation(fields: [voiceProfileId], references: [id])
+  frameworkId     String?
+  framework       Framework?    @relation(fields: [frameworkId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   slides          Slide[]
 }
 
 model Slide {
-  id             String       @id @default(cuid())
+  id             String       @id @default(cuid()) @map("_id")
   title          String
   content        String
+  narration      String?      // Speaker notes/narration for the slide
   slideType      SlideType
   layout         SlideLayout  @default(TEXT_ONLY)
   order          Int
@@ -46,6 +97,8 @@ model Slide {
   imagePosition  ImagePosition @default(RIGHT)
   textAlign      TextAlign    @default(LEFT)
   customStyles   String?
+  showTitle      Boolean      @default(true)
+  showContent    Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -63,12 +116,19 @@ enum SlideType {
 enum SlideLayout {
   TEXT_ONLY
   TITLE_COVER
+  TITLE_ONLY
   TEXT_IMAGE_LEFT
   TEXT_IMAGE_RIGHT
   IMAGE_FULL
   BULLETS_IMAGE
   TWO_COLUMN
   IMAGE_BACKGROUND
+  TIMELINE
+  QUOTE_LARGE
+  STATISTICS_GRID
+  IMAGE_OVERLAY
+  SPLIT_CONTENT
+  COMPARISON
 }
 
 enum ImagePosition {
