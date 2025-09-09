@@ -13,7 +13,21 @@
       "Read(/c:\\Users\\spoil\\Downloads/**)",
       "Bash(npx tsc:*)",
       "Bash(rd:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(git fsck:*)",
+      "Bash(git stash show:*)",
+      "Bash(npm ls:*)",
+      "WebSearch",
+      "Bash(cat:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Read(//c/Users/spoil/Downloads/**)",
+      "Bash(npx next dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(copy .env.local .env)"
     ],
     "deny": [],
     "ask": []

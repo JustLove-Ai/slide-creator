@@ -13,13 +13,15 @@ interface Slide {
   content: string
   narration?: string
   slideType: string
-  layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND'
+  layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TITLE_ONLY' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND' | 'TIMELINE' | 'QUOTE_LARGE' | 'STATISTICS_GRID' | 'IMAGE_OVERLAY' | 'SPLIT_CONTENT' | 'COMPARISON'
   order: number
   imageUrl?: string
   backgroundColor?: string
   textColor?: string
   headingColor?: string
   textAlign?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFY'
+  showHeading?: boolean
+  showSubheading?: boolean
 }
 
 interface Presentation {
@@ -126,14 +128,24 @@ export default function PresentationViewer({
     
     switch (slide.layout) {
       case 'TITLE_COVER':
+      case 'TITLE_ONLY':
         return { 
           background: `linear-gradient(135deg, ${presentation.primaryColor}, ${presentation.secondaryColor})` 
         }
       case 'IMAGE_BACKGROUND':
+      case 'IMAGE_OVERLAY':
         return { 
           backgroundImage: slide.imageUrl ? `url(${slide.imageUrl})` : `linear-gradient(135deg, ${presentation.primaryColor}20, ${presentation.secondaryColor}20)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
+        }
+      case 'QUOTE_LARGE':
+        return {
+          background: `linear-gradient(45deg, ${presentation.primaryColor}15, ${presentation.secondaryColor}15)`
+        }
+      case 'STATISTICS_GRID':
+        return {
+          background: `linear-gradient(135deg, ${presentation.primaryColor}08, ${presentation.secondaryColor}08)`
         }
       default:
         return { backgroundColor: themeColors.backgroundColor }
@@ -173,18 +185,34 @@ export default function PresentationViewer({
       case 'TITLE_COVER':
         return (
           <div className="h-full flex flex-col items-center justify-center text-center px-20 py-16">
-            <h1 
-              className="text-6xl font-bold mb-8 leading-tight"
-              style={titleStyle}
-            >
-              {slide.title}
-            </h1>
-            {slide.content && (
+            {slide.showHeading !== false && (
+              <h1 
+                className="text-6xl font-bold mb-8 leading-tight"
+                style={titleStyle}
+              >
+                {slide.title}
+              </h1>
+            )}
+            {slide.showSubheading !== false && slide.content && (
               <div 
                 className="text-xl max-w-4xl"
                 style={contentStyle}
                 dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
               />
+            )}
+          </div>
+        )
+
+      case 'TITLE_ONLY':
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center px-20 py-16">
+            {slide.showHeading !== false && (
+              <h1 
+                className="text-7xl font-bold leading-tight"
+                style={titleStyle}
+              >
+                {slide.title}
+              </h1>
             )}
           </div>
         )
@@ -229,6 +257,135 @@ export default function PresentationViewer({
             </div>
             <div className="w-1/2">
               {slide.imageUrl && <img src={slide.imageUrl} alt="" className="w-full h-full object-cover" />}
+            </div>
+          </div>
+        )
+
+      case 'TIMELINE':
+        return (
+          <div className="h-full px-16 py-12">
+            <h1 
+              className="text-4xl font-bold mb-12 text-center leading-tight"
+              style={titleStyle}
+            >
+              {slide.title}
+            </h1>
+            <div className="relative">
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-current opacity-20 transform -translate-x-1/2"></div>
+              <div 
+                className="space-y-8"
+                style={contentStyle}
+                dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+              />
+            </div>
+          </div>
+        )
+
+      case 'QUOTE_LARGE':
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center px-20 py-16">
+            <div 
+              className="text-5xl font-light italic leading-relaxed mb-8 max-w-4xl"
+              style={contentStyle}
+              dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+            />
+            <h1 
+              className="text-2xl font-semibold"
+              style={titleStyle}
+            >
+              {slide.title}
+            </h1>
+          </div>
+        )
+
+      case 'STATISTICS_GRID':
+        return (
+          <div className="h-full px-16 py-12">
+            <h1 
+              className="text-4xl font-bold mb-12 text-center leading-tight"
+              style={titleStyle}
+            >
+              {slide.title}
+            </h1>
+            <div 
+              className="grid grid-cols-2 gap-8 text-center"
+              style={contentStyle}
+              dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+            />
+          </div>
+        )
+
+      case 'IMAGE_OVERLAY':
+        return (
+          <div className="h-full relative">
+            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+            <div className="relative h-full flex flex-col items-center justify-center text-center px-20 py-16 text-white">
+              <h1 
+                className="text-6xl font-bold mb-8 leading-tight"
+                style={{ ...titleStyle, color: 'white' }}
+              >
+                {slide.title}
+              </h1>
+              {slide.content && (
+                <div 
+                  className="text-xl max-w-4xl"
+                  style={{ ...contentStyle, color: 'white' }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+                />
+              )}
+            </div>
+          </div>
+        )
+
+      case 'SPLIT_CONTENT':
+        return (
+          <div className="h-full flex">
+            <div className="w-2/3 px-16 py-12 flex flex-col justify-center">
+              <h1 
+                className="text-4xl font-bold mb-8 leading-tight"
+                style={titleStyle}
+              >
+                {slide.title}
+              </h1>
+              <div 
+                className="text-lg leading-relaxed prose prose-lg max-w-none"
+                style={contentStyle}
+                dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+              />
+            </div>
+            <div className="w-1/3 flex items-center justify-center bg-opacity-10 bg-current">
+              {slide.imageUrl ? (
+                <img src={slide.imageUrl} alt="" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-current opacity-10"></div>
+              )}
+            </div>
+          </div>
+        )
+
+      case 'COMPARISON':
+        return (
+          <div className="h-full px-16 py-12">
+            <h1 
+              className="text-4xl font-bold mb-12 text-center leading-tight"
+              style={titleStyle}
+            >
+              {slide.title}
+            </h1>
+            <div className="flex h-full gap-8">
+              <div 
+                className="flex-1 border-r border-current border-opacity-20 pr-8"
+                style={contentStyle}
+                dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(slide.content) }}
+              />
+              <div className="flex-1 pl-8">
+                {slide.imageUrl && (
+                  <img src={slide.imageUrl} alt="" className="w-full h-64 object-cover rounded-lg mb-4" />
+                )}
+                <div className="text-lg" style={contentStyle}>
+                  Additional comparison content would go here.
+                </div>
+              </div>
             </div>
           </div>
         )

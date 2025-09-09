@@ -53,13 +53,19 @@ export default function SlidePreview({
     
     switch (layout) {
       case 'TITLE_COVER':
+      case 'TITLE_ONLY':
         return { background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }
       case 'IMAGE_BACKGROUND':
+      case 'IMAGE_OVERLAY':
         return { 
           backgroundImage: imageUrl ? `url(${imageUrl})` : `linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }
+      case 'QUOTE_LARGE':
+        return { background: `linear-gradient(45deg, ${primaryColor}15, ${secondaryColor}15)` }
+      case 'STATISTICS_GRID':
+        return { background: `linear-gradient(135deg, ${primaryColor}08, ${secondaryColor}08)` }
       default:
         return { background: '#ffffff' }
     }
@@ -206,6 +212,94 @@ export default function SlidePreview({
               </div>
             </div>
             <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg"></div>
+          </div>
+        )
+
+      case 'TITLE_ONLY':
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center text-white p-8">
+            <h1 className="text-5xl font-bold" style={{ color: 'white' }}>{title}</h1>
+          </div>
+        )
+
+      case 'TIMELINE':
+        return (
+          <div className="h-full p-6">
+            <h2 className="text-2xl font-bold mb-4 text-center" style={{ color: primaryColor }}>{title}</h2>
+            <div className="relative h-3/4">
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+              <div className={`${baseStyle} space-y-4 text-sm`}>
+                {formatContent(content)}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'QUOTE_LARGE':
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8">
+            <div className="text-2xl font-light italic mb-4 max-w-sm">
+              {formatContent(content)}
+            </div>
+            <h2 className="text-lg font-semibold" style={{ color: primaryColor }}>{title}</h2>
+          </div>
+        )
+
+      case 'STATISTICS_GRID':
+        return (
+          <div className="h-full p-6">
+            <h2 className="text-2xl font-bold mb-4 text-center" style={{ color: primaryColor }}>{title}</h2>
+            <div className="grid grid-cols-2 gap-4 h-3/4 text-center">
+              <div className="text-sm">
+                {formatContent(content)}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'IMAGE_OVERLAY':
+        return (
+          <div className="h-full relative flex items-center justify-center text-center p-8">
+            <div className="relative z-10 text-white">
+              <h1 className="text-3xl font-bold mb-4 drop-shadow-lg">{title}</h1>
+              <div className="text-lg drop-shadow-md">
+                {formatContent(content)}
+              </div>
+            </div>
+            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg"></div>
+          </div>
+        )
+
+      case 'SPLIT_CONTENT':
+        return (
+          <div className="h-full flex">
+            <div className="w-2/3 p-6 flex flex-col justify-center">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: primaryColor }}>{title}</h2>
+              <div className={baseStyle}>
+                {formatContent(content)}
+              </div>
+            </div>
+            <div className="w-1/3 p-4 flex items-center justify-center bg-gray-100">
+              {renderImage('w-full h-32 rounded')}
+            </div>
+          </div>
+        )
+
+      case 'COMPARISON':
+        return (
+          <div className="h-full p-6">
+            <h2 className="text-2xl font-bold mb-4 text-center" style={{ color: primaryColor }}>{title}</h2>
+            <div className="flex h-3/4 gap-4">
+              <div className="flex-1 border-r border-gray-200 pr-4">
+                <div className={`${baseStyle} text-sm`}>
+                  {formatContent(content)}
+                </div>
+              </div>
+              <div className="flex-1 pl-4">
+                {renderImage('w-full h-20 rounded mb-2')}
+                <div className="text-xs text-gray-600">Comparison content</div>
+              </div>
+            </div>
           </div>
         )
 

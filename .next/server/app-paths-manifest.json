@@ -1,5 +1,3 @@
 {
-  "/api/slides/[id]/route": "app/api/slides/[id]/route.js",
-  "/api/presentations/[id]/route": "app/api/presentations/[id]/route.js",
   "/presentations/[id]/page": "app/presentations/[id]/page.js"
 }

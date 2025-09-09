@@ -1,17 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { Layout, Type, Image, FileText, Grid, Presentation } from 'lucide-react'
+import { Layout, Type, Image, FileText, Grid, Presentation, Clock, Quote, BarChart3, Layers, GitCompare, Sparkles } from 'lucide-react'
 
 export type SlideLayoutType = 
   | 'TEXT_ONLY' 
-  | 'TITLE_COVER' 
+  | 'TITLE_COVER'
+  | 'TITLE_ONLY'
   | 'TEXT_IMAGE_LEFT' 
   | 'TEXT_IMAGE_RIGHT' 
   | 'IMAGE_FULL' 
   | 'BULLETS_IMAGE' 
   | 'TWO_COLUMN' 
   | 'IMAGE_BACKGROUND'
+  | 'TIMELINE'
+  | 'QUOTE_LARGE'
+  | 'STATISTICS_GRID'
+  | 'IMAGE_OVERLAY'
+  | 'SPLIT_CONTENT'
+  | 'COMPARISON'
 
 interface LayoutOption {
   id: SlideLayoutType
@@ -24,6 +31,8 @@ interface LayoutOption {
 interface LayoutSelectorProps {
   currentLayout: SlideLayoutType
   onLayoutChange: (layout: SlideLayoutType) => void
+  isOpen?: boolean
+  onToggle?: () => void
 }
 
 const layoutOptions: LayoutOption[] = [
@@ -40,6 +49,13 @@ const layoutOptions: LayoutOption[] = [
     description: 'Large title slide with subtitle',
     icon: <Presentation className="w-4 h-4" />,
     preview: 'bg-gradient-to-br from-blue-500 to-purple-600'
+  },
+  {
+    id: 'TITLE_ONLY',
+    name: 'Title Only',
+    description: 'Clean title slide without subtitle',
+    icon: <Sparkles className="w-4 h-4" />,
+    preview: 'bg-gradient-to-br from-emerald-500 to-teal-600'
   },
   {
     id: 'TEXT_IMAGE_LEFT',
@@ -82,18 +98,64 @@ const layoutOptions: LayoutOption[] = [
     description: 'Text over background image',
     icon: <Image className="w-4 h-4 opacity-50" />,
     preview: 'bg-gradient-to-br from-indigo-400 to-purple-500'
+  },
+  {
+    id: 'TIMELINE',
+    name: 'Timeline',
+    description: 'Sequential timeline layout',
+    icon: <Clock className="w-4 h-4" />,
+    preview: 'bg-gradient-to-r from-amber-300 to-orange-400'
+  },
+  {
+    id: 'QUOTE_LARGE',
+    name: 'Large Quote',
+    description: 'Prominent quote or testimonial',
+    icon: <Quote className="w-4 h-4" />,
+    preview: 'bg-gradient-to-br from-rose-300 to-pink-400'
+  },
+  {
+    id: 'STATISTICS_GRID',
+    name: 'Statistics Grid',
+    description: 'Grid layout for stats and numbers',
+    icon: <BarChart3 className="w-4 h-4" />,
+    preview: 'bg-gradient-to-br from-cyan-300 to-blue-400'
+  },
+  {
+    id: 'IMAGE_OVERLAY',
+    name: 'Image Overlay',
+    description: 'Text overlaid on image with effects',
+    icon: <Layers className="w-4 h-4" />,
+    preview: 'bg-gradient-to-br from-violet-400 to-purple-500'
+  },
+  {
+    id: 'SPLIT_CONTENT',
+    name: 'Split Content',
+    description: 'Asymmetrical content split',
+    icon: <Layout className="w-4 h-4 rotate-90" />,
+    preview: 'bg-gradient-to-r from-lime-300 to-green-400'
+  },
+  {
+    id: 'COMPARISON',
+    name: 'Comparison',
+    description: 'Side-by-side comparison layout',
+    icon: <GitCompare className="w-4 h-4" />,
+    preview: 'bg-gradient-to-r from-red-300 to-yellow-300'
   }
 ]
 
-export default function LayoutSelector({ currentLayout, onLayoutChange }: LayoutSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function LayoutSelector({ currentLayout, onLayoutChange, isOpen: controlledIsOpen, onToggle }: LayoutSelectorProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  
+  // Use controlled state if provided, otherwise use internal state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen
+  const handleToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen))
 
   const currentLayoutOption = layoutOptions.find(option => option.id === currentLayout)
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
       >
         {currentLayoutOption?.icon}
@@ -104,24 +166,28 @@ export default function LayoutSelector({ currentLayout, onLayoutChange }: Layout
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-          <div className="p-3">
+        <div className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="p-4">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Choose Layout</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {layoutOptions.map((option) => (
                 <button
                   key={option.id}
                   onClick={() => {
                     onLayoutChange(option.id)
-                    setIsOpen(false)
+                    if (controlledIsOpen !== undefined && onToggle) {
+                      onToggle()
+                    } else {
+                      setInternalIsOpen(false)
+                    }
                   }}
-                  className={`p-3 rounded-lg border-2 transition-all hover:border-blue-300 ${
+                  className={`p-2 rounded-lg border-2 transition-all hover:border-blue-300 ${
                     currentLayout === option.id 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className={`w-full h-16 rounded ${option.preview} mb-2 flex items-center justify-center`}>
+                  <div className={`w-full h-12 rounded ${option.preview} mb-2 flex items-center justify-center`}>
                     <div className="text-white/80">
                       {option.icon}
                     </div>
@@ -130,7 +196,7 @@ export default function LayoutSelector({ currentLayout, onLayoutChange }: Layout
                     <div className="text-xs font-medium text-gray-900 mb-1">
                       {option.name}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 leading-tight">
                       {option.description}
                     </div>
                   </div>
