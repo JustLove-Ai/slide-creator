@@ -20,8 +20,8 @@ interface Slide {
   textColor?: string
   headingColor?: string
   textAlign?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFY'
-  showHeading?: boolean
-  showSubheading?: boolean
+  showTitle?: boolean
+  showContent?: boolean
 }
 
 interface Presentation {
@@ -185,7 +185,7 @@ export default function PresentationViewer({
       case 'TITLE_COVER':
         return (
           <div className="h-full flex flex-col items-center justify-center text-center px-20 py-16">
-            {slide.showHeading !== false && (
+            {slide.showTitle !== false && (
               <h1 
                 className="text-6xl font-bold mb-8 leading-tight"
                 style={titleStyle}
@@ -193,7 +193,7 @@ export default function PresentationViewer({
                 {slide.title}
               </h1>
             )}
-            {slide.showSubheading !== false && slide.content && (
+            {slide.showContent !== false && slide.content && (
               <div 
                 className="text-xl max-w-4xl"
                 style={contentStyle}
@@ -205,10 +205,10 @@ export default function PresentationViewer({
 
       case 'TITLE_ONLY':
         return (
-          <div className="h-full flex flex-col items-center justify-center text-center px-20 py-16">
-            {slide.showHeading !== false && (
+          <div className="h-full flex items-center justify-center text-center p-12">
+            {slide.showTitle !== false && (
               <h1 
-                className="text-7xl font-bold leading-tight"
+                className="text-6xl font-bold leading-tight"
                 style={titleStyle}
               >
                 {slide.title}

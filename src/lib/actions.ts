@@ -1078,6 +1078,8 @@ export async function duplicateFramework(id: string) {
 
 // Presentation CRUD Actions
 export async function createPresentation(formData: FormData) {
+  let presentationId: string
+  
   try {
     const title = formData.get('title') as string
     const prompt = formData.get('prompt') as string
@@ -1150,12 +1152,14 @@ export async function createPresentation(formData: FormData) {
       }
     })
 
+    presentationId = presentation.id
     revalidatePath('/presentations')
-    redirect(`/presentations/${presentation.id}`)
   } catch (error) {
     console.error('Error creating presentation:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Failed to create presentation' }
   }
+  
+  redirect(`/presentations/${presentationId}`)
 }
 
 export async function getPresentations() {

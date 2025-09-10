@@ -57,10 +57,17 @@ export async function generateSlideContent(
       throw new Error('No response from OpenAI')
     }
     
-    // Parse JSON response
+    // Parse JSON response - handle both raw JSON and markdown code blocks
     let slides: SlideContent[]
     try {
-      slides = JSON.parse(responseText)
+      // Remove markdown code blocks if present
+      let jsonText = responseText
+      const codeBlockMatch = responseText.match(/```json\s*\n?([\s\S]*?)\n?```/)
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1]
+      }
+      
+      slides = JSON.parse(jsonText)
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', responseText)
       throw new Error('Invalid response format from AI')
