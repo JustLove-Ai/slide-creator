@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPresentation } from '@/lib/actions'
+import { generateOutlinePreview, createPresentation } from '@/lib/actions'
 
 interface VoiceProfile {
   id: string
@@ -22,6 +22,13 @@ interface Framework {
   }>
 }
 
+interface SimpleOutlineItem {
+  title: string
+  mainTopic: string
+  slideType: string
+  order: number
+}
+
 interface CreatePresentationFormProps {
   initialVoiceProfiles: VoiceProfile[]
   initialFrameworks: Framework[]
@@ -35,7 +42,9 @@ export default function CreatePresentationForm({
   const [prompt, setPrompt] = useState('')
   const [voiceProfileId, setVoiceProfileId] = useState('')
   const [frameworkId, setFrameworkId] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingOutline, setIsLoadingOutline] = useState(false)
+  const [isGeneratingSlides, setIsGeneratingSlides] = useState(false)
+  const [outline, setOutline] = useState<SimpleOutlineItem[] | null>(null)
   const [voiceProfiles] = useState<VoiceProfile[]>(initialVoiceProfiles)
   const [frameworks] = useState<Framework[]>(initialFrameworks)
 
@@ -47,9 +56,34 @@ export default function CreatePresentationForm({
     }
   }, [initialVoiceProfiles])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleGenerateOutline = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setIsLoadingOutline(true)
+    
+    try {
+      const formData = new FormData()
+      formData.append('title', title)
+      formData.append('prompt', prompt)
+      formData.append('voiceProfileId', voiceProfileId || 'none')
+      formData.append('frameworkId', frameworkId || 'none')
+      
+      const result = await generateOutlinePreview(formData)
+      if (result.success) {
+        setOutline(result.outline)
+      } else {
+        console.error('Error generating outline:', result.error)
+      }
+    } catch (error) {
+      console.error('Error generating outline:', error)
+    } finally {
+      setIsLoadingOutline(false)
+    }
+  }
+
+  const handleGeneratePresentation = async () => {
+    if (!outline) return
+    
+    setIsGeneratingSlides(true)
     
     try {
       const formData = new FormData()
@@ -63,17 +97,19 @@ export default function CreatePresentationForm({
     } catch (error) {
       console.error('Error creating presentation:', error)
     } finally {
-      setIsLoading(false)
+      setIsGeneratingSlides(false)
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-card rounded-lg shadow-lg border p-8">
-      <h2 className="text-2xl font-bold text-card-foreground mb-6">
-        Create New Presentation
-      </h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+      {/* Form Section */}
+      <div className="bg-card rounded-lg shadow-lg border p-8">
+        <h2 className="text-2xl font-bold text-card-foreground mb-6">
+          Create New Presentation
+        </h2>
+        
+        <form onSubmit={handleGenerateOutline} className="space-y-6">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
               Presentation Title
@@ -189,23 +225,23 @@ export default function CreatePresentationForm({
               required
             />
             <p className="mt-2 text-sm text-muted-foreground">
-              The more specific your instructions, the better AI can generate relevant content.
+              The more specific your instructions, the better AI can generate relevant content. We&apos;ll show you an outline first to confirm the direction.
             </p>
           </div>
 
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoadingOutline}
               className="flex-1 bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? (
+              {isLoadingOutline ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
-                  Generating Presentation...
+                  Generating Outline...
                 </div>
               ) : (
-                'Generate Presentation'
+                'Generate Outline'
               )}
             </button>
             
@@ -218,6 +254,65 @@ export default function CreatePresentationForm({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Preview Section */}
+      <div className="bg-card rounded-lg shadow-lg border p-8">
+        <h3 className="text-xl font-bold text-card-foreground mb-6">
+          Outline Preview
+        </h3>
+        
+        {!outline && !isLoadingOutline && (
+          <div className="text-center text-muted-foreground py-12">
+            <div className="text-4xl mb-4">📝</div>
+            <p>Generate an outline to preview your presentation structure</p>
+          </div>
+        )}
+
+        {isLoadingOutline && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Generating outline...</p>
+          </div>
+        )}
+
+        {outline && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-4">
+              Preview of {outline.length} slides. Edit your prompt above if this doesn&apos;t look right.
+            </div>
+            
+            {outline.map((slide, index) => (
+              <div key={index} className="p-4 border border-border rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                    {slide.order}
+                  </span>
+                  <h4 className="font-semibold text-card-foreground">{slide.title}</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">{slide.mainTopic}</p>
+              </div>
+            ))}
+
+            <div className="pt-4 border-t">
+              <button
+                onClick={handleGeneratePresentation}
+                disabled={isGeneratingSlides}
+                className="w-full bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isGeneratingSlides ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Generating Full Presentation...
+                  </div>
+                ) : (
+                  'Generate Full Presentation'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

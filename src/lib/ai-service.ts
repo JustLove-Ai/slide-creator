@@ -3,6 +3,8 @@ import {
   SYSTEM_PROMPT,
   SLIDE_GENERATION_PROMPT,
   SLIDE_REGENERATION_PROMPT,
+  SIMPLE_OUTLINE_PROMPT,
+  SLIDES_FROM_OUTLINE_PROMPT,
   buildVoiceContextPrompt,
   buildFrameworkPrompt,
   getDefaultLayoutForSlideType,
@@ -17,7 +19,15 @@ export interface SlideContent {
   title: string
   content: string
   slideType: 'TITLE' | 'INTRO' | 'CONTENT' | 'CONCLUSION' | 'NEXT_STEPS'
-  layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND'
+  layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TITLE_ONLY' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND' | 'TIMELINE' | 'QUOTE_LARGE' | 'STATISTICS_GRID' | 'IMAGE_OVERLAY' | 'SPLIT_CONTENT' | 'COMPARISON'
+  order: number
+  narration?: string
+}
+
+export interface SimpleOutlineItem {
+  title: string
+  mainTopic: string
+  slideType: 'TITLE' | 'INTRO' | 'CONTENT' | 'CONCLUSION' | 'NEXT_STEPS'
   order: number
 }
 
@@ -87,6 +97,170 @@ export async function generateSlideContent(
     
     throw error
   }
+}
+
+export async function generateSimpleOutline(
+  prompt: string, 
+  presentationTitle: string,
+  voiceProfile?: any,
+  framework?: any
+): Promise<SimpleOutlineItem[]> {
+  try {
+    // Build voice context from structured voice profile
+    const voiceContext = buildVoiceContextPrompt(voiceProfile)
+    
+    // Build framework context if provided
+    const frameworkContext = buildFrameworkPrompt(framework)
+    
+    // Construct the final prompt
+    const finalPrompt = SIMPLE_OUTLINE_PROMPT
+      .replace('{topic}', prompt)
+      .replace('{title}', presentationTitle)
+      .replace('{voiceContext}', voiceContext)
+      .replace('{frameworkContext}', frameworkContext)
+    
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 3000
+    })
+    
+    const responseText = completion.choices[0]?.message?.content
+    if (!responseText) {
+      throw new Error('No response from OpenAI')
+    }
+    
+    // Parse JSON response - handle both raw JSON and markdown code blocks
+    let outline: SimpleOutlineItem[]
+    try {
+      // Remove markdown code blocks if present
+      let jsonText = responseText
+      const codeBlockMatch = responseText.match(/```json\s*\n?([\s\S]*?)\n?```/)
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1]
+      }
+      
+      outline = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI outline response:', responseText)
+      throw new Error('Invalid outline format from AI')
+    }
+    
+    // Validate and ensure proper outline structure
+    return validateAndFixSimpleOutline(outline)
+    
+  } catch (error) {
+    console.error('Error generating outline:', error)
+    
+    // Fallback to basic outline if OpenAI fails
+    if (error instanceof Error && error.message.includes('API')) {
+      console.warn('OpenAI API failed, using fallback outline')
+      return generateFallbackSimpleOutline(prompt, presentationTitle, framework)
+    }
+    
+    throw error
+  }
+}
+
+export async function generateSlidesFromSimpleOutline(
+  outline: SimpleOutlineItem[],
+  presentationTitle: string,
+  voiceProfile?: any
+): Promise<SlideContent[]> {
+  try {
+    // Build voice context from structured voice profile
+    const voiceContext = buildVoiceContextPrompt(voiceProfile)
+    
+    // Construct the final prompt
+    const finalPrompt = SLIDES_FROM_OUTLINE_PROMPT
+      .replace('{outline}', JSON.stringify(outline, null, 2))
+      .replace('{title}', presentationTitle)
+      .replace('{voiceContext}', voiceContext)
+    
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 6000
+    })
+    
+    const responseText = completion.choices[0]?.message?.content
+    if (!responseText) {
+      throw new Error('No response from OpenAI')
+    }
+    
+    // Parse JSON response - handle both raw JSON and markdown code blocks
+    let slides: SlideContent[]
+    try {
+      // Remove markdown code blocks if present
+      let jsonText = responseText
+      const codeBlockMatch = responseText.match(/```json\s*\n?([\s\S]*?)\n?```/)
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1]
+      }
+      
+      slides = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI slides response:', responseText)
+      throw new Error('Invalid slides format from AI')
+    }
+    
+    // Validate and ensure proper slide structure
+    return validateAndFixSlides(slides)
+    
+  } catch (error) {
+    console.error('Error generating slides from outline:', error)
+    throw error
+  }
+}
+
+function validateAndFixSimpleOutline(outline: SimpleOutlineItem[]): SimpleOutlineItem[] {
+  return outline.map((item, index) => ({
+    ...item,
+    order: item.order || index + 1,
+    slideType: item.slideType || 'CONTENT',
+    mainTopic: item.mainTopic || 'Main topic for this slide'
+  }))
+}
+
+function generateFallbackSimpleOutline(prompt: string, title: string, framework?: any): SimpleOutlineItem[] {
+  const outline: SimpleOutlineItem[] = [
+    {
+      title,
+      mainTopic: `Title slide for presentation about ${prompt}`,
+      slideType: 'TITLE',
+      order: 1
+    },
+    {
+      title: 'Overview',
+      mainTopic: `Introduction and overview of ${prompt}`,
+      slideType: 'INTRO',
+      order: 2
+    },
+    {
+      title: 'Main Content',
+      mainTopic: `Key points and details about ${prompt}`,
+      slideType: 'CONTENT',
+      order: 3
+    },
+    {
+      title: 'Conclusion',
+      mainTopic: `Summary and takeaways from ${prompt}`,
+      slideType: 'CONCLUSION',
+      order: 4
+    }
+  ]
+  
+  return outline
 }
 
 function validateAndFixSlides(slides: SlideContent[]): SlideContent[] {

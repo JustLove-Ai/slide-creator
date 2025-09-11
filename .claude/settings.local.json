@@ -27,7 +27,9 @@
       "Bash(npx next dev:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(copy .env.local .env)"
+      "Bash(copy .env.local .env)",
+      "Bash(node:*)",
+      "Bash(clear)"
     ],
     "deny": [],
     "ask": []

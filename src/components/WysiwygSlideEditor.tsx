@@ -20,7 +20,8 @@ import {
   X,
   Settings,
   MessageSquare,
-  FileText
+  FileText,
+  Copy
 } from 'lucide-react'
 import { SlideLayoutType } from './LayoutSelector'
 import ImagePromptModal from './ImagePromptModal'
@@ -56,6 +57,7 @@ interface WysiwygSlideEditorProps {
   onSave: (slide: Slide) => Promise<void>
   onDelete: (slideId: string) => Promise<void>
   onRequestDelete: (slideId: string) => void
+  onDuplicate: (slideId: string) => Promise<void>
   onRegenerate: (slideId: string) => Promise<void>
   onUpdatePresentation: (updates: Partial<Presentation>) => Promise<void>
   onApplyThemeToAllSlides?: (themeUpdates: { backgroundColor?: string, textColor?: string, headingColor?: string }) => Promise<void>
@@ -76,6 +78,7 @@ export default function WysiwygSlideEditor({
   onSave, 
   onDelete, 
   onRequestDelete,
+  onDuplicate,
   onRegenerate,
   onUpdatePresentation,
   onApplyThemeToAllSlides,
@@ -735,6 +738,14 @@ export default function WysiwygSlideEditor({
                 title="Regenerate with AI"
               >
                 <Sparkles className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => onDuplicate(slide.id)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                title="Duplicate Slide"
+              >
+                <Copy className="w-4 h-4" />
               </button>
               
               <button

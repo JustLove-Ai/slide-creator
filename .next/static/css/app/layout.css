@@ -1701,6 +1701,9 @@ video {
 .pr-8 {
   padding-right: 2rem;
 }
+.pt-4 {
+  padding-top: 1rem;
+}
 .pt-6 {
   padding-top: 1.5rem;
 }
@@ -1962,6 +1965,9 @@ video {
 .outline-none {
   outline: 2px solid transparent;
   outline-offset: 2px;
+}
+.\!outline {
+  outline-style: solid !important;
 }
 .outline {
   outline-style: solid;

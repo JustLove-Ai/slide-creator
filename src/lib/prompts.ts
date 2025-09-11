@@ -155,6 +155,82 @@ Return a JSON object with this exact structure:
 
 IMPORTANT: Return ONLY the JSON object, no additional text or explanations.`
 
+export const SIMPLE_OUTLINE_PROMPT = `Generate a simple presentation outline to verify topic understanding:
+
+TOPIC: {topic}
+PRESENTATION TITLE: {title}
+
+{voiceContext}
+
+{frameworkContext}
+
+Create a simple outline showing slide titles and main topic to confirm understanding before generating full slides.
+
+OUTPUT FORMAT:
+Return a JSON array with this structure:
+[
+  {
+    "title": "slide title",
+    "mainTopic": "what this slide covers in one sentence",
+    "slideType": "TITLE|INTRO|CONTENT|CONCLUSION|NEXT_STEPS",
+    "order": 1
+  }
+]
+
+REQUIREMENTS:
+- Keep it simple - just slide titles and one-sentence topics
+- Focus on ensuring topic understanding is correct
+- Create 4-7 slides typically
+- Make sure the main subject/acronyms are interpreted correctly
+
+IMPORTANT: Return ONLY the JSON array, no additional text or explanations.`
+
+export const SLIDES_FROM_OUTLINE_PROMPT = `Generate detailed presentation slides based on the approved outline:
+
+OUTLINE: {outline}
+
+PRESENTATION TITLE: {title}
+
+{voiceContext}
+
+Generate full slide content with detailed speaker notes based on the approved outline structure.
+
+OUTPUT FORMAT:
+Return a JSON array of slide objects with this exact structure:
+[
+  {
+    "title": "slide title",
+    "content": "detailed slide content in markdown format with proper headings and bullet points",
+    "narration": "detailed word-for-word speaker notes that explain the slide content. This should be what the presenter will say while showing this slide. Make it conversational and comprehensive.",
+    "slideType": "TITLE|INTRO|CONTENT|CONCLUSION|NEXT_STEPS",
+    "layout": "TEXT_ONLY|TITLE_COVER|TEXT_IMAGE_LEFT|TEXT_IMAGE_RIGHT|IMAGE_FULL|BULLETS_IMAGE|TWO_COLUMN|IMAGE_BACKGROUND",
+    "order": 1
+  }
+]
+
+CONTENT REQUIREMENTS:
+- Use markdown formatting (##, ###, -, etc.)
+- Create engaging, actionable content that matches the outline
+- Follow the approved structure and key points exactly
+- Make content appropriate for the target audience
+- Include specific examples and actionable insights where relevant
+- Keep content concise but comprehensive
+
+SPEAKER NOTES REQUIREMENTS:
+- Write detailed, word-for-word narration that explains each slide
+- Notes should flow naturally and be comprehensive enough to read directly
+- Explain each point on the slide in detail with context and examples
+- Match the voice profile tone and style
+- Include transitions between points and slides
+- Make notes conversational and engaging for the audience
+- Provide specific talking points for each bullet or section
+
+TITLE SLIDE REQUIREMENTS:
+- Content should ONLY include the presentation title
+- Speaker notes should welcome the audience and introduce the topic
+
+IMPORTANT: Return ONLY the JSON array, no additional text or explanations.`
+
 export const DEFAULT_SLIDE_LAYOUTS = {
   TITLE: 'TITLE_ONLY',
   INTRO: 'TEXT_ONLY',

@@ -9,7 +9,7 @@ import WysiwygSlideEditor from '@/components/WysiwygSlideEditor'
 import AddSlideButton from '@/components/AddSlideButton'
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 import { SlideLayoutType } from '@/components/LayoutSelector'
-import { updateSlide, deleteSlide, updatePresentation, applyThemeToAllSlides, reorderSlides, getPresentation, regenerateSlide } from '@/lib/actions'
+import { updateSlide, deleteSlide, duplicateSlide, updatePresentation, applyThemeToAllSlides, reorderSlides, getPresentation, regenerateSlide } from '@/lib/actions'
 import { SlideContent } from '@/lib/ai-service'
 
 interface Slide {
@@ -134,6 +134,20 @@ export default function PresentationPage() {
       await fetchPresentation()
     } catch (error) {
       console.error('Error deleting slide:', error)
+    }
+  }
+
+  const handleDuplicateSlide = async (slideId: string) => {
+    try {
+      const result = await duplicateSlide(slideId)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to duplicate slide')
+      }
+
+      await fetchPresentation()
+    } catch (error) {
+      console.error('Error duplicating slide:', error)
     }
   }
 
@@ -556,8 +570,8 @@ export default function PresentationPage() {
                 onSave={handleSaveSlide}
                 onDelete={handleDeleteSlide}
                 onRequestDelete={handleRequestDelete}
+                onDuplicate={handleDuplicateSlide}
                 onRegenerate={handleRegenerateSlide}
-                onSplitSlide={handleSplitSlide}
                 onUpdatePresentation={handleUpdatePresentation}
                 onApplyThemeToAllSlides={handleApplyThemeToAllSlides}
                 applyToAllSlides={applyToAllSlides}
