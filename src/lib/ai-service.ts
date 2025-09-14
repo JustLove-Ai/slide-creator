@@ -1,10 +1,12 @@
 import OpenAI from 'openai'
-import { 
+import {
   SYSTEM_PROMPT,
   SLIDE_GENERATION_PROMPT,
   SLIDE_REGENERATION_PROMPT,
   SIMPLE_OUTLINE_PROMPT,
   SLIDES_FROM_OUTLINE_PROMPT,
+  GENERATE_ANGLES_PROMPT,
+  PRESENTATION_FROM_ANGLE_PROMPT,
   buildVoiceContextPrompt,
   buildFrameworkPrompt,
   getDefaultLayoutForSlideType,
@@ -29,6 +31,14 @@ export interface SimpleOutlineItem {
   mainTopic: string
   slideType: 'TITLE' | 'INTRO' | 'CONTENT' | 'CONCLUSION' | 'NEXT_STEPS'
   order: number
+}
+
+export interface GeneratedAngle {
+  frameworkType: 'CUB' | 'PASE' | 'HEAR'
+  angleTitle: string
+  description: string
+  keyPoints: string[]
+  frameworkId: string
 }
 
 export async function generateSlideContent(
@@ -264,12 +274,33 @@ function generateFallbackSimpleOutline(prompt: string, title: string, framework?
 }
 
 function validateAndFixSlides(slides: SlideContent[]): SlideContent[] {
-  return slides.map((slide, index) => ({
-    ...slide,
-    order: slide.order || index + 1,
-    layout: slide.layout || getDefaultLayoutForSlideType(slide.slideType),
-    slideType: slide.slideType || 'CONTENT'
-  }))
+  const validSlideTypes = ['TITLE', 'INTRO', 'CONTENT', 'CONCLUSION', 'NEXT_STEPS']
+
+  return slides.map((slide, index) => {
+    // Ensure slideType is valid
+    let slideType = slide.slideType || 'CONTENT'
+    if (!validSlideTypes.includes(slideType)) {
+      // Map invalid slide types to valid ones based on position and content
+      if (index === 0) {
+        slideType = 'TITLE'
+      } else if (index === 1 || slide.title.toLowerCase().includes('intro')) {
+        slideType = 'INTRO'
+      } else if (index >= slides.length - 2 && (slide.title.toLowerCase().includes('conclusion') || slide.title.toLowerCase().includes('summary'))) {
+        slideType = 'CONCLUSION'
+      } else if (index === slides.length - 1 || slide.title.toLowerCase().includes('next') || slide.title.toLowerCase().includes('action')) {
+        slideType = 'NEXT_STEPS'
+      } else {
+        slideType = 'CONTENT'
+      }
+    }
+
+    return {
+      ...slide,
+      order: slide.order || index + 1,
+      layout: slide.layout || getDefaultLayoutForSlideType(slideType),
+      slideType
+    }
+  })
 }
 
 function generateFallbackSlides(prompt: string, title: string, framework?: any): SlideContent[] {
@@ -308,6 +339,220 @@ function generateFallbackSlides(prompt: string, title: string, framework?: any):
 }
 
 
+export async function generateAnglesFromIdea(
+  title: string,
+  description: string,
+  frameworks: any[]
+): Promise<GeneratedAngle[]> {
+  try {
+    // Find the angle framework IDs
+    const cubFramework = frameworks.find(f => f.name.includes('CUB Framework'))
+    const paseFramework = frameworks.find(f => f.name.includes('PASE Framework'))
+    const hearFramework = frameworks.find(f => f.name.includes('HEAR Framework'))
+
+    // Construct the prompt
+    const finalPrompt = GENERATE_ANGLES_PROMPT
+      .replace('{title}', title)
+      .replace('{description}', description)
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 2000
+    })
+
+    const responseText = completion.choices[0]?.message?.content
+    if (!responseText) {
+      throw new Error('No response from OpenAI')
+    }
+
+    // Parse JSON response - handle both raw JSON and markdown code blocks
+    let angles: GeneratedAngle[]
+    try {
+      // Remove markdown code blocks if present
+      let jsonText = responseText
+      const codeBlockMatch = responseText.match(/```json\s*\n?([\s\S]*?)\n?```/)
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1]
+      }
+
+      angles = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI angles response:', responseText)
+      throw new Error('Invalid angles format from AI')
+    }
+
+    // Update with actual framework IDs
+    angles = angles.map(angle => ({
+      ...angle,
+      frameworkId: angle.frameworkType === 'CUB' ? (cubFramework?.id || '') :
+                   angle.frameworkType === 'PASE' ? (paseFramework?.id || '') :
+                   angle.frameworkType === 'HEAR' ? (hearFramework?.id || '') : ''
+    }))
+
+    return angles
+
+  } catch (error) {
+    console.error('Error generating angles from idea:', error)
+
+    // Fallback angles if OpenAI fails
+    return generateFallbackAngles(title, description, frameworks)
+  }
+}
+
+export async function generatePresentationFromAngle(
+  idea: { title: string; description: string },
+  selectedAngle: GeneratedAngle,
+  presentationTitle: string,
+  voiceProfile?: any,
+  framework?: any
+): Promise<SlideContent[]> {
+  try {
+    // Build voice context from structured voice profile
+    const voiceContext = buildVoiceContextPrompt(voiceProfile)
+
+    // Build framework context if provided
+    const frameworkContext = buildFrameworkPrompt(framework)
+
+    // Construct the final prompt
+    const finalPrompt = PRESENTATION_FROM_ANGLE_PROMPT
+      .replace('{ideaTitle}', idea.title)
+      .replace('{ideaDescription}', idea.description)
+      .replace('{frameworkType}', selectedAngle.frameworkType)
+      .replace('{angleTitle}', selectedAngle.angleTitle)
+      .replace('{angleDescription}', selectedAngle.description)
+      .replace('{keyPoints}', selectedAngle.keyPoints.join(', '))
+      .replace('{presentationTitle}', presentationTitle)
+      .replace('{voiceContext}', voiceContext)
+      .replace('{frameworkContext}', frameworkContext)
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8000
+    })
+
+    const responseText = completion.choices[0]?.message?.content
+    if (!responseText) {
+      throw new Error('No response from OpenAI')
+    }
+
+    // Parse JSON response - handle both raw JSON and markdown code blocks
+    let slides: SlideContent[]
+    try {
+      // Remove markdown code blocks if present
+      let jsonText = responseText
+      const codeBlockMatch = responseText.match(/```json\s*\n?([\s\S]*?)\n?```/)
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1]
+      }
+
+      slides = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI presentation response:', responseText)
+      throw new Error('Invalid presentation format from AI')
+    }
+
+    // Validate and ensure proper slide structure
+    return validateAndFixSlides(slides)
+
+  } catch (error) {
+    console.error('Error generating presentation from angle:', error)
+
+    // Fallback to basic slides if OpenAI fails
+    if (error instanceof Error && error.message.includes('API')) {
+      console.warn('OpenAI API failed, using fallback content')
+      return generateFallbackSlidesWithNarration(idea, selectedAngle, presentationTitle, framework)
+    }
+
+    throw error
+  }
+}
+
+function generateFallbackAngles(title: string, description: string, frameworks: any[]): GeneratedAngle[] {
+  const cubFramework = frameworks.find(f => f.name.includes('CUB Framework'))
+  const paseFramework = frameworks.find(f => f.name.includes('PASE Framework'))
+  const hearFramework = frameworks.find(f => f.name.includes('HEAR Framework'))
+
+  return [
+    {
+      frameworkType: 'CUB',
+      angleTitle: `Contrarian Approach to ${title}`,
+      description: `Challenge conventional wisdom about ${title} with a fresh perspective that provides practical value.`,
+      keyPoints: ['Challenge common beliefs', 'Provide practical alternatives', 'Connect to bigger trends'],
+      frameworkId: cubFramework?.id || ''
+    },
+    {
+      frameworkType: 'PASE',
+      angleTitle: `Solving the ${title} Problem`,
+      description: `Identify and solve the key problems related to ${title} with actionable solutions.`,
+      keyPoints: ['Identify core problems', 'Show consequences of inaction', 'Present effective solutions'],
+      frameworkId: paseFramework?.id || ''
+    },
+    {
+      frameworkType: 'HEAR',
+      angleTitle: `Your Guide to ${title}`,
+      description: `Build trust and provide clear guidance on mastering ${title} with empathy and authority.`,
+      keyPoints: ['Hook attention immediately', 'Show understanding of struggles', 'Provide clear roadmap'],
+      frameworkId: hearFramework?.id || ''
+    }
+  ]
+}
+
+function generateFallbackSlidesWithNarration(
+  idea: { title: string; description: string },
+  selectedAngle: GeneratedAngle,
+  presentationTitle: string,
+  framework?: any
+): SlideContent[] {
+  const slides: SlideContent[] = [
+    {
+      title: presentationTitle,
+      content: `# ${presentationTitle}\n\n## ${selectedAngle.angleTitle}`,
+      narration: `Welcome everyone, and thank you for joining today's presentation. I'm excited to share with you "${presentationTitle}" - and we're going to approach this topic from a unique angle: ${selectedAngle.angleTitle}. ${selectedAngle.description} Let's dive in.`,
+      slideType: 'TITLE',
+      layout: 'TITLE_COVER',
+      order: 1
+    },
+    {
+      title: 'Overview',
+      content: `## Overview\n\nToday we'll explore:\n\n${selectedAngle.keyPoints.map((point, i) => `${i + 1}. ${point}`).join('\n')}`,
+      narration: `Before we get into the details, let me give you a roadmap of what we'll cover today. We have three main areas to explore: ${selectedAngle.keyPoints.join(', ')}. Each of these builds on the previous one to give you a complete understanding of ${idea.title}.`,
+      slideType: 'INTRO',
+      layout: 'BULLETS_IMAGE',
+      order: 2
+    },
+    {
+      title: selectedAngle.keyPoints[0] || 'Main Point',
+      content: `## ${selectedAngle.keyPoints[0] || 'Main Point'}\n\n### Key Insights\n- Important concept related to ${idea.title}\n- How this applies in real situations\n- Why this matters for your success\n\n### Practical Applications\nSpecific ways to implement this in your context.`,
+      narration: `Let's start with our first key point: ${selectedAngle.keyPoints[0] || 'Main Point'}. This is fundamental to understanding ${idea.title}. Based on our original concept - ${idea.description} - we can see that this point is crucial because it sets the foundation for everything else we'll discuss. Let me explain how this applies in real situations and why it matters for your success.`,
+      slideType: 'CONTENT',
+      layout: 'TEXT_IMAGE_RIGHT',
+      order: 3
+    },
+    {
+      title: 'Next Steps',
+      content: `## Next Steps\n\n### Immediate Actions\n1. Apply the first key insight\n2. Implement the practical applications\n3. Monitor your progress\n\n### Long-term Strategy\nContinue developing your understanding of ${idea.title}`,
+      narration: `As we wrap up today's session, I want to leave you with clear next steps. Don't let this information just sit in your notes - take action. Start with applying that first key insight we discussed. Then implement the practical applications in your own context. Monitor your progress and adjust as needed. Remember, mastering ${idea.title} is a journey, and today's presentation has given you the roadmap to get started. Thank you for your attention, and I'm happy to take any questions.`,
+      slideType: 'NEXT_STEPS',
+      layout: 'BULLETS_IMAGE',
+      order: 4
+    }
+  ]
+
+  return slides
+}
+
 export async function regenerateSlideContent(
   originalSlide: SlideContent,
   prompt: string,
@@ -317,7 +562,7 @@ export async function regenerateSlideContent(
   try {
     // Build voice context
     const voiceContext = buildVoiceContextPrompt(voiceProfile)
-    
+
     // Construct the regeneration prompt
     const finalPrompt = SLIDE_REGENERATION_PROMPT
       .replace('{originalTitle}', originalSlide.title)
@@ -328,7 +573,7 @@ export async function regenerateSlideContent(
       .replace('{additionalContext}', additionalContext || 'None')
       .replace('{voiceContext}', voiceContext)
       .replace('{order}', originalSlide.order.toString())
-    
+
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -339,12 +584,12 @@ export async function regenerateSlideContent(
       temperature: 0.8,
       max_tokens: 1500
     })
-    
+
     const responseText = completion.choices[0]?.message?.content
     if (!responseText) {
       throw new Error('No response from OpenAI')
     }
-    
+
     // Parse JSON response
     let enhancedSlide: SlideContent
     try {
@@ -353,16 +598,16 @@ export async function regenerateSlideContent(
       console.error('Failed to parse regeneration response:', responseText)
       throw new Error('Invalid response format from AI')
     }
-    
+
     // Ensure the slide maintains its order and basic structure
     return {
       ...enhancedSlide,
       order: originalSlide.order
     }
-    
+
   } catch (error) {
     console.error('Error regenerating slide content:', error)
-    
+
     // Fallback to enhanced version of original slide
     return {
       ...originalSlide,

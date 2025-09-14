@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { generateSimpleOutline, generateSlidesFromSimpleOutline, generateSlideContent, regenerateSlideContent } from '@/lib/ai-service'
+import { generateSimpleOutline, generateSlidesFromSimpleOutline, generateSlideContent, regenerateSlideContent, generateAnglesFromIdea, generatePresentationFromAngle, type GeneratedAngle } from '@/lib/ai-service'
 
 // Helper function to get placeholder images for layouts that need images
 function getPlaceholderImageForLayout(layout: string): string | null {
@@ -167,6 +167,7 @@ export async function updateSlide(formData: FormData) {
     const title = formData.get('title') as string
     const content = formData.get('content') as string
     const narration = formData.get('narration') as string
+    const annotations = formData.get('annotations') as string
     const layout = formData.get('layout') as string
     const imageUrl = formData.get('imageUrl') as string
     const backgroundColor = formData.get('backgroundColor') as string
@@ -182,6 +183,7 @@ export async function updateSlide(formData: FormData) {
         title,
         content,
         narration: narration || null,
+        annotations: annotations || null,
         layout: layout as any,
         imageUrl: imageUrl || null,
         backgroundColor: backgroundColor || null,
@@ -1235,6 +1237,147 @@ const frameworkTemplates = [
         order: 6
       }
     ]
+  },
+  // Angle-based frameworks for idea development
+  {
+    name: "CUB Framework (Contrarian-Useful-Bridge)",
+    description: "Challenges common beliefs, provides practical value, then bridges to bigger trends. Perfect for thought-provoking presentations that position you as a thought leader.",
+    isDefault: false,
+    slides: [
+      {
+        title: "Title Slide",
+        instructions: "Create an engaging title slide that hints at the contrarian perspective you'll present.",
+        slideType: "TITLE",
+        layout: "TITLE_COVER",
+        order: 1
+      },
+      {
+        title: "Contrarian - Challenge the Common Belief",
+        instructions: "Present what's OPPOSITE of common belief. Start with 'What if everything you know about [topic] is wrong?' or 'Here's why [common belief] is actually holding you back.' Be bold and attention-grabbing.",
+        slideType: "INTRO",
+        layout: "QUOTE_LARGE",
+        order: 2
+      },
+      {
+        title: "Useful - The Practical Method",
+        instructions: "Present your USEFUL practical tip or method. This is the actionable solution that anyone can try. Be specific with steps, frameworks, or techniques that provide immediate value.",
+        slideType: "CONTENT",
+        layout: "BULLETS_IMAGE",
+        order: 3
+      },
+      {
+        title: "Bridge - Connect to Something Bigger",
+        instructions: "Show how this connects to a larger BRIDGE - a trend, future possibility, or mission. Explain how this small change connects to massive transformation in the industry, personal growth, or societal shift.",
+        slideType: "CONCLUSION",
+        layout: "TWO_COLUMN",
+        order: 4
+      },
+      {
+        title: "Your Turn - Take Action",
+        instructions: "Challenge the audience to try the contrarian approach. Give them one specific thing they can do today to test this new perspective.",
+        slideType: "NEXT_STEPS",
+        layout: "TEXT_ONLY",
+        order: 5
+      }
+    ]
+  },
+  {
+    name: "PASE Framework (Problem-Agitate-Solve-Expand)",
+    description: "Identifies pain points, amplifies urgency, presents solutions, then expands possibilities. Ideal for persuasive presentations that drive action.",
+    isDefault: false,
+    slides: [
+      {
+        title: "Title Slide",
+        instructions: "Create an compelling title slide that hints at the problem you'll solve.",
+        slideType: "TITLE",
+        layout: "TITLE_COVER",
+        order: 1
+      },
+      {
+        title: "Problem - What's the Issue?",
+        instructions: "Clearly identify the PROBLEM your audience faces. Make it specific, relatable, and urgent. Use data, examples, or stories that make the audience think 'Yes, this is exactly what I'm dealing with!'",
+        slideType: "INTRO",
+        layout: "TEXT_IMAGE_LEFT",
+        order: 2
+      },
+      {
+        title: "Agitate - Why Does This Hurt?",
+        instructions: "AGITATE the problem by showing the cost of inaction. What happens if this problem isn't solved? Show the pain, missed opportunities, or consequences. Make them feel the urgency.",
+        slideType: "CONTENT",
+        layout: "STATISTICS_GRID",
+        order: 3
+      },
+      {
+        title: "Solve - Your Solution Method",
+        instructions: "Present your SOLUTION method. This is your framework, process, or approach that directly addresses the problem. Make it clear, actionable, and achievable.",
+        slideType: "CONTENT",
+        layout: "BULLETS_IMAGE",
+        order: 4
+      },
+      {
+        title: "Expand - What Else Becomes Possible?",
+        instructions: "EXPAND on what becomes possible once they solve this problem. Show the bigger transformation, additional benefits, or new opportunities that open up. Paint the vision of success.",
+        slideType: "CONCLUSION",
+        layout: "TWO_COLUMN",
+        order: 5
+      },
+      {
+        title: "Start Today - First Steps",
+        instructions: "Give them concrete first steps to begin solving this problem today. Make the path forward clear and achievable.",
+        slideType: "NEXT_STEPS",
+        layout: "TEXT_ONLY",
+        order: 6
+      }
+    ]
+  },
+  {
+    name: "HEAR Framework (Hook-Empathy-Authority-Roadmap)",
+    description: "Grabs attention, shows understanding, establishes credibility, then provides clear direction. Perfect for building trust and guiding audiences.",
+    isDefault: false,
+    slides: [
+      {
+        title: "Title Slide",
+        instructions: "Create an engaging title slide that sets up your hook and expertise on the topic.",
+        slideType: "TITLE",
+        layout: "TITLE_COVER",
+        order: 1
+      },
+      {
+        title: "Hook - Grab Attention",
+        instructions: "Start with a powerful HOOK that grabs attention immediately. Use a surprising statistic, thought-provoking question, bold statement, or compelling story that makes people stop and pay attention.",
+        slideType: "INTRO",
+        layout: "QUOTE_LARGE",
+        order: 2
+      },
+      {
+        title: "Empathy - Show You Get Their Struggle",
+        instructions: "Show EMPATHY by demonstrating you understand their specific struggles, challenges, or frustrations. Share your own experience or relate to their situation to build connection and trust.",
+        slideType: "CONTENT",
+        layout: "TEXT_IMAGE_RIGHT",
+        order: 3
+      },
+      {
+        title: "Authority - Share Your Insight/Method",
+        instructions: "Establish your AUTHORITY by sharing your unique insight, method, or expertise. This is where you present your framework, approach, or solution. Show why you're qualified to help.",
+        slideType: "CONTENT",
+        layout: "BULLETS_IMAGE",
+        order: 4
+      },
+      {
+        title: "Roadmap - Lay Out the Steps",
+        instructions: "Provide a clear ROADMAP showing exactly how your method works. Break it down into simple, logical steps that anyone can follow. Make the path forward crystal clear.",
+        slideType: "CONCLUSION",
+        layout: "TIMELINE",
+        order: 5
+      },
+      {
+        title: "Begin Your Journey - Take Action",
+        instructions: "Encourage them to begin their journey with your method. Give them the very first step they can take right now to start seeing results.",
+        slideType: "NEXT_STEPS",
+        layout: "TEXT_ONLY",
+        order: 6
+      }
+    ]
   }
 ]
 
@@ -1670,12 +1813,14 @@ export async function duplicateFramework(id: string) {
 // Presentation CRUD Actions
 export async function createPresentation(formData: FormData) {
   let presentationId: string
-  
+
   try {
     const title = formData.get('title') as string
     const prompt = formData.get('prompt') as string
     const voiceProfileId = formData.get('voiceProfileId') as string
     const frameworkId = formData.get('frameworkId') as string
+    const ideaId = formData.get('ideaId') as string
+    const selectedAngle = formData.get('selectedAngle') as string
 
     if (!title || !prompt) {
       return { success: false, error: 'Title and prompt are required' }
@@ -1704,9 +1849,9 @@ export async function createPresentation(formData: FormData) {
 
     // Generate slides based on framework or free-form
     const slideContents = await generateSlideContent(
-      prompt, 
-      title, 
-      voiceProfile, 
+      prompt,
+      title,
+      voiceProfile,
       framework
     )
 
@@ -1716,6 +1861,8 @@ export async function createPresentation(formData: FormData) {
         prompt,
         voiceProfileId: voiceProfileId && voiceProfileId !== 'none' ? voiceProfileId : null,
         frameworkId: frameworkId && frameworkId !== 'none' ? frameworkId : null,
+        ideaId: ideaId && ideaId !== 'none' ? ideaId : null,
+        selectedAngle: selectedAngle || null,
         primaryColor: '#3b82f6',
         secondaryColor: '#1e40af',
         fontFamily: 'Inter',
@@ -2032,4 +2179,553 @@ export async function regenerateSlide(slideId: string, additionalContext?: strin
     console.error('Error regenerating slide:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Failed to regenerate slide' }
   }
+}
+
+// Idea CRUD Actions
+export async function getIdeas() {
+  try {
+    const ideas = await prisma.idea.findMany({
+      include: {
+        presentations: {
+          select: {
+            id: true,
+            title: true,
+            createdAt: true,
+            selectedAngle: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return ideas
+  } catch (error) {
+    console.error('Error fetching ideas:', error)
+    return []
+  }
+}
+
+export async function createIdea(formData: FormData) {
+  try {
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+
+    if (!title || !description) {
+      return { success: false, error: 'Title and description are required' }
+    }
+
+    const idea = await prisma.idea.create({
+      data: {
+        title,
+        description
+      }
+    })
+
+    revalidatePath('/ideas')
+    return { success: true, idea }
+  } catch (error) {
+    console.error('Error creating idea:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create idea' }
+  }
+}
+
+export async function updateIdea(id: string, formData: FormData) {
+  try {
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+
+    if (!title || !description) {
+      return { success: false, error: 'Title and description are required' }
+    }
+
+    const idea = await prisma.idea.update({
+      where: { id },
+      data: {
+        title,
+        description
+      }
+    })
+
+    revalidatePath('/ideas')
+    return { success: true, idea }
+  } catch (error) {
+    console.error('Error updating idea:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update idea' }
+  }
+}
+
+export async function deleteIdea(id: string) {
+  try {
+    await prisma.idea.delete({
+      where: { id }
+    })
+
+    revalidatePath('/ideas')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting idea:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete idea' }
+  }
+}
+
+export async function getIdea(id: string) {
+  try {
+    const idea = await prisma.idea.findUnique({
+      where: { id },
+      include: {
+        presentations: {
+          include: {
+            slides: {
+              select: {
+                id: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    })
+
+    return idea
+  } catch (error) {
+    console.error('Error fetching idea:', error)
+    return null
+  }
+}
+
+async function ensureAngleFrameworksExist() {
+  const existingFrameworks = await prisma.framework.findMany({
+    where: {
+      OR: [
+        { name: { contains: 'CUB Framework' } },
+        { name: { contains: 'PASE Framework' } },
+        { name: { contains: 'HEAR Framework' } },
+        { name: { contains: 'WWH Framework' } }
+      ]
+    }
+  })
+
+  const existingNames = existingFrameworks.map(f => f.name)
+
+  const frameworksToCreate = []
+
+  if (!existingNames.some(name => name.includes('CUB Framework'))) {
+    frameworksToCreate.push({
+      name: 'CUB Framework',
+      description: 'Contrarian-Useful-Bridge: Challenge beliefs, provide utility, connect to trends',
+      isDefault: false,
+      isCustom: false,
+      slides: {
+        create: [
+          {
+            title: 'Title Slide',
+            instructions: 'Present the main title and subtitle for the presentation',
+            slideType: 'TITLE',
+            layout: 'TITLE_COVER',
+            order: 1
+          },
+          {
+            title: 'Contrarian - Challenge the Status Quo',
+            instructions: 'Present a contrarian viewpoint that challenges common beliefs about the topic',
+            slideType: 'INTRO',
+            layout: 'TEXT_ONLY',
+            order: 2
+          },
+          {
+            title: 'Useful - Practical Solution',
+            instructions: 'Provide practical, actionable methods that deliver real value',
+            slideType: 'CONTENT',
+            layout: 'TEXT_IMAGE_RIGHT',
+            order: 3
+          },
+          {
+            title: 'Bridge - Connect to Future',
+            instructions: 'Connect your solution to bigger trends and transformations',
+            slideType: 'CONCLUSION',
+            layout: 'TEXT_ONLY',
+            order: 4
+          },
+          {
+            title: 'Next Steps',
+            instructions: 'Provide clear action items for the audience',
+            slideType: 'NEXT_STEPS',
+            layout: 'BULLETS_IMAGE',
+            order: 5
+          }
+        ]
+      }
+    })
+  }
+
+  if (!existingNames.some(name => name.includes('PASE Framework'))) {
+    frameworksToCreate.push({
+      name: 'PASE Framework',
+      description: 'Problem-Agitate-Solve-Expand: Identify problems, show consequences, solve, expand possibilities',
+      isDefault: false,
+      isCustom: false,
+      slides: {
+        create: [
+          {
+            title: 'Title Slide',
+            instructions: 'Present the main title and subtitle for the presentation',
+            slideType: 'TITLE',
+            layout: 'TITLE_COVER',
+            order: 1
+          },
+          {
+            title: 'Problem - Identify the Pain Points',
+            instructions: 'Identify specific pain points and challenges your audience faces',
+            slideType: 'INTRO',
+            layout: 'TEXT_ONLY',
+            order: 2
+          },
+          {
+            title: 'Agitate - Show the Consequences',
+            instructions: 'Show the consequences and costs of not addressing the problem',
+            slideType: 'CONTENT',
+            layout: 'TEXT_IMAGE_RIGHT',
+            order: 3
+          },
+          {
+            title: 'Solve - Present Your Solution',
+            instructions: 'Provide your method or approach to solve the identified problems',
+            slideType: 'CONTENT',
+            layout: 'TEXT_IMAGE_LEFT',
+            order: 4
+          },
+          {
+            title: 'Expand - What Becomes Possible',
+            instructions: 'Show what becomes possible when the solution is implemented',
+            slideType: 'CONCLUSION',
+            layout: 'TEXT_ONLY',
+            order: 5
+          },
+          {
+            title: 'Next Steps',
+            instructions: 'Provide clear action items for the audience',
+            slideType: 'NEXT_STEPS',
+            layout: 'BULLETS_IMAGE',
+            order: 6
+          }
+        ]
+      }
+    })
+  }
+
+  if (!existingNames.some(name => name.includes('HEAR Framework'))) {
+    frameworksToCreate.push({
+      name: 'HEAR Framework',
+      description: 'Hook-Empathy-Authority-Roadmap: Grab attention, show understanding, establish credibility, provide clear path',
+      isDefault: false,
+      isCustom: false,
+      slides: {
+        create: [
+          {
+            title: 'Title Slide',
+            instructions: 'Present the main title and subtitle for the presentation',
+            slideType: 'TITLE',
+            layout: 'TITLE_COVER',
+            order: 1
+          },
+          {
+            title: 'Hook - Grab Attention',
+            instructions: 'Start with an attention-grabbing opening that draws the audience in',
+            slideType: 'INTRO',
+            layout: 'TEXT_ONLY',
+            order: 2
+          },
+          {
+            title: 'Empathy - Understand Their Struggles',
+            instructions: 'Show deep understanding of your audience\'s challenges and pain points',
+            slideType: 'CONTENT',
+            layout: 'TEXT_ONLY',
+            order: 3
+          },
+          {
+            title: 'Authority - Share Your Expertise',
+            instructions: 'Establish credibility by sharing your method, experience, or unique insights',
+            slideType: 'CONTENT',
+            layout: 'TEXT_IMAGE_RIGHT',
+            order: 4
+          },
+          {
+            title: 'Roadmap - Clear Path Forward',
+            instructions: 'Provide a clear, step-by-step roadmap for achieving success',
+            slideType: 'NEXT_STEPS',
+            layout: 'BULLETS_IMAGE',
+            order: 5
+          }
+        ]
+      }
+    })
+  }
+
+  if (!existingNames.some(name => name.includes('WWH Framework'))) {
+    frameworksToCreate.push({
+      name: 'WWH Framework',
+      description: 'What-Why-How: Present the concept, explain the reasoning, provide implementation steps',
+      isDefault: false,
+      isCustom: false,
+      slides: {
+        create: [
+          {
+            title: 'Title Slide',
+            instructions: 'Present the main title and subtitle for the presentation',
+            slideType: 'TITLE',
+            layout: 'TITLE_COVER',
+            order: 1
+          },
+          {
+            title: 'What - The Concept',
+            instructions: 'Present the concept, method, or solution clearly and concisely',
+            slideType: 'INTRO',
+            layout: 'TEXT_ONLY',
+            order: 2
+          },
+          {
+            title: 'Why - The Reasoning',
+            instructions: 'Explain why this matters, the benefits, importance, and urgency',
+            slideType: 'CONTENT',
+            layout: 'TEXT_IMAGE_RIGHT',
+            order: 3
+          },
+          {
+            title: 'How - The Implementation',
+            instructions: 'Provide clear, step-by-step guidance for implementation',
+            slideType: 'NEXT_STEPS',
+            layout: 'BULLETS_IMAGE',
+            order: 4
+          }
+        ]
+      }
+    })
+  }
+
+  // Create the missing frameworks
+  for (const frameworkData of frameworksToCreate) {
+    await prisma.framework.create({
+      data: frameworkData
+    })
+  }
+}
+
+export async function generateAngles(formData: FormData) {
+  try {
+    const ideaId = formData.get('ideaId') as string
+    const title = formData.get('title') as string
+    const prompt = formData.get('prompt') as string
+
+    let ideaTitle: string
+    let ideaDescription: string
+
+    if (ideaId) {
+      // Generate angles from existing idea
+      const idea = await prisma.idea.findUnique({
+        where: { id: ideaId }
+      })
+
+      if (!idea) {
+        return { success: false, error: 'Idea not found' }
+      }
+
+      ideaTitle = idea.title
+      ideaDescription = idea.description
+    } else if (title && prompt) {
+      // Generate angles from direct input
+      ideaTitle = title
+      ideaDescription = prompt
+    } else {
+      return { success: false, error: 'Either ideaId or title and prompt are required' }
+    }
+
+    // Get the frameworks needed for angle generation
+    const frameworks = await prisma.framework.findMany({
+      where: {
+        OR: [
+          { name: { contains: 'CUB Framework' } },
+          { name: { contains: 'PASE Framework' } },
+          { name: { contains: 'HEAR Framework' } },
+          { name: { contains: 'WWH Framework' } }
+        ]
+      }
+    })
+
+    if (frameworks.length < 4) {
+      // Auto-create missing angle frameworks
+      await ensureAngleFrameworksExist()
+
+      // Try to get them again
+      const retryFrameworks = await prisma.framework.findMany({
+        where: {
+          OR: [
+            { name: { contains: 'CUB Framework' } },
+            { name: { contains: 'PASE Framework' } },
+            { name: { contains: 'HEAR Framework' } },
+            { name: { contains: 'WWH Framework' } }
+          ]
+        }
+      })
+
+      if (retryFrameworks.length < 4) {
+        return { success: false, error: 'Failed to create required angle frameworks.' }
+      }
+
+      // Use the newly created frameworks
+      frameworks.push(...retryFrameworks)
+    }
+
+    // Generate angles using AI
+    const angles = await generateAnglesFromIdea(
+      ideaTitle,
+      ideaDescription,
+      frameworks
+    )
+
+    return {
+      success: true,
+      angles,
+      idea: ideaId ? {
+        id: ideaId,
+        title: ideaTitle,
+        description: ideaDescription
+      } : null
+    }
+  } catch (error) {
+    console.error('Error generating angles:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to generate angles' }
+  }
+}
+
+export async function createPresentationFromAngle(formData: FormData) {
+  let presentationId: string
+
+  try {
+    const title = formData.get('title') as string
+    const voiceProfileId = formData.get('voiceProfileId') as string
+    const ideaId = formData.get('ideaId') as string
+    const selectedAngleJson = formData.get('selectedAngle') as string
+
+    if (!title || !selectedAngleJson) {
+      return { success: false, error: 'Title and selected angle are required' }
+    }
+
+    let selectedAngle: GeneratedAngle
+    try {
+      selectedAngle = JSON.parse(selectedAngleJson)
+    } catch (error) {
+      return { success: false, error: 'Invalid angle format' }
+    }
+
+    // Get the idea if provided (as template), otherwise use direct input
+    let idea = null
+    const prompt = formData.get('prompt') as string
+    let contentDescription = prompt || 'Direct content creation'
+
+    if (ideaId) {
+      idea = await prisma.idea.findUnique({
+        where: { id: ideaId }
+      })
+
+      if (idea) {
+        contentDescription = idea.description
+        // Note: ideas are used as templates, not linked to presentations
+      }
+    }
+
+    // Get voice profile if specified
+    let voiceProfile = null
+    if (voiceProfileId && voiceProfileId !== 'none') {
+      voiceProfile = await prisma.voiceProfile.findUnique({
+        where: { id: voiceProfileId }
+      })
+    }
+
+    // Get the framework for the selected angle
+    let framework = null
+    if (selectedAngle.frameworkId) {
+      framework = await prisma.framework.findUnique({
+        where: { id: selectedAngle.frameworkId },
+        include: {
+          slides: {
+            orderBy: { order: 'asc' }
+          }
+        }
+      })
+    }
+
+    // Generate slides using the selected angle approach
+    const slideContents = await generatePresentationFromAngle(
+      { title: idea?.title || title, description: contentDescription },
+      selectedAngle,
+      title,
+      voiceProfile,
+      framework
+    )
+
+    // Create the presentation
+    const presentation = await prisma.presentation.create({
+      data: {
+        title,
+        prompt: contentDescription,
+        voiceProfileId: voiceProfileId && voiceProfileId !== 'none' ? voiceProfileId : null,
+        frameworkId: selectedAngle.frameworkId || null,
+        ideaId: null, // Ideas are used as templates, not linked
+        selectedAngle: selectedAngle.angleTitle,
+        primaryColor: '#3b82f6',
+        secondaryColor: '#1e40af',
+        fontFamily: 'Inter',
+        slides: {
+          create: slideContents.map(slide => ({
+            title: slide.title,
+            content: slide.content,
+            narration: slide.narration || `Speaking notes for "${slide.title}": Present the content clearly and engage with your audience.`,
+            slideType: slide.slideType,
+            layout: slide.layout || 'TEXT_ONLY',
+            order: slide.order,
+            imageUrl: getPlaceholderImageForLayout(slide.layout || 'TEXT_ONLY'),
+          }))
+        }
+      },
+      include: {
+        slides: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    })
+
+    presentationId = presentation.id
+    revalidatePath('/presentations')
+    revalidatePath('/ideas')
+    // Auto-save brainstorm to ideas if it doesn't already exist
+    if (!ideaId && prompt) {
+      try {
+        await prisma.idea.create({
+          data: {
+            title: title,
+            description: contentDescription
+          }
+        })
+      } catch (error) {
+        // If it fails to create idea, continue anyway - don't block presentation creation
+        console.log('Could not auto-save idea, continuing with presentation creation')
+      }
+    }
+
+    revalidatePath('/presentations')
+    revalidatePath('/ideas')
+  } catch (error) {
+    console.error('Error creating presentation from angle:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create presentation' }
+  }
+
+  redirect(`/presentations/${presentationId}`)
 }
