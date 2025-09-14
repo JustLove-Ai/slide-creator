@@ -60,6 +60,15 @@ model FrameworkSlide {
   @@unique([frameworkId, order])
 }
 
+model Idea {
+  id            String         @id @default(cuid()) @map("_id")
+  title         String
+  description   String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  presentations Presentation[]
+}
+
 model Presentation {
   id              String        @id @default(cuid()) @map("_id")
   title           String
@@ -73,6 +82,9 @@ model Presentation {
   voiceProfile    VoiceProfile? @relation(fields: [voiceProfileId], references: [id])
   frameworkId     String?
   framework       Framework?    @relation(fields: [frameworkId], references: [id])
+  ideaId          String?
+  idea            Idea?         @relation(fields: [ideaId], references: [id])
+  selectedAngle   String?       // CUB, PASE, HEAR
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   slides          Slide[]
@@ -83,6 +95,7 @@ model Slide {
   title          String
   content        String
   narration      String?      // Speaker notes/narration for the slide
+  annotations    String?      // JSON string containing annotation data
   slideType      SlideType
   layout         SlideLayout  @default(TEXT_ONLY)
   order          Int

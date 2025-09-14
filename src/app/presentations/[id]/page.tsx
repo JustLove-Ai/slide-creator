@@ -17,6 +17,7 @@ interface Slide {
   title: string
   content: string
   narration?: string
+  annotations?: string
   slideType: string
   layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TITLE_ONLY' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND' | 'TIMELINE' | 'QUOTE_LARGE' | 'STATISTICS_GRID' | 'IMAGE_OVERLAY' | 'SPLIT_CONTENT' | 'COMPARISON'
   order: number
@@ -96,6 +97,7 @@ export default function PresentationPage() {
       formData.append('title', slide.title)
       formData.append('content', slide.content)
       if (slide.narration) formData.append('narration', slide.narration)
+      if (slide.annotations) formData.append('annotations', slide.annotations)
       formData.append('layout', slide.layout)
       if (slide.imageUrl) formData.append('imageUrl', slide.imageUrl)
       if (slide.backgroundColor) formData.append('backgroundColor', slide.backgroundColor)

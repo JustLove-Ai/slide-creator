@@ -9,6 +9,7 @@ export function TopNavigation() {
 
   const navItems = [
     { href: "/", label: "Dashboard" },
+    { href: "/ideas", label: "Ideas" },
     { href: "/presentations", label: "Presentations" },
     { href: "/create", label: "Create" },
     { href: "/voice-profiles", label: "Voice Profiles" },

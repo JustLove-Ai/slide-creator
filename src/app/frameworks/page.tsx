@@ -492,7 +492,7 @@ function FrameworkForm({ framework, onSuccess, onCancel }: FrameworkFormProps) {
             {slides.length === 0 && (
               <div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed border-border">
                 <h4 className="text-sm font-medium mb-2">No slides added yet</h4>
-                <p className="text-xs">Click "Add Slide" to start building your framework structure</p>
+                <p className="text-xs">Click &quot;Add Slide&quot; to start building your framework structure</p>
               </div>
             )}
           </div>

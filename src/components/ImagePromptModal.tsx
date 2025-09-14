@@ -117,7 +117,7 @@ export default function ImagePromptModal({
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-700">
                 💡 <strong>Tip:</strong> Be specific about style, colors, and mood for better results. 
-                Example: "Modern conference room with natural lighting, minimalist design, blue and white colors"
+                Example: &quot;Modern conference room with natural lighting, minimalist design, blue and white colors&quot;
               </p>
             </div>
           </motion.div>

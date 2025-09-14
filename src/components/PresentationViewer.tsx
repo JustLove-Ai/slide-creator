@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Maximize, X, MessageSquare, Eye, EyeOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize, X, MessageSquare, Eye, EyeOff, PenTool } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { parseMarkdownToHtml } from '@/lib/markdown-utils'
 import { getThemeColorsForSlide } from '@/lib/theme-utils'
+import AnnotationOverlay from './AnnotationOverlay'
 
 interface Slide {
   id: string
   title: string
   content: string
+  annotations?: string
   narration?: string
   slideType: string
   layout: 'TEXT_ONLY' | 'TITLE_COVER' | 'TITLE_ONLY' | 'TEXT_IMAGE_LEFT' | 'TEXT_IMAGE_RIGHT' | 'IMAGE_FULL' | 'BULLETS_IMAGE' | 'TWO_COLUMN' | 'IMAGE_BACKGROUND' | 'TIMELINE' | 'QUOTE_LARGE' | 'STATISTICS_GRID' | 'IMAGE_OVERLAY' | 'SPLIT_CONTENT' | 'COMPARISON'
@@ -46,6 +48,7 @@ export default function PresentationViewer({
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [narrationVisible, setNarrationVisible] = useState(false)
+  const [annotationsVisible, setAnnotationsVisible] = useState(true)
   const { theme } = useTheme()
 
   const currentSlide = slides[currentSlideIndex]
@@ -102,12 +105,17 @@ export default function PresentationViewer({
           event.preventDefault()
           setNarrationVisible(!narrationVisible)
           break
+        case 'a':
+        case 'A':
+          event.preventDefault()
+          setAnnotationsVisible(!annotationsVisible)
+          break
       }
     }
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [nextSlide, previousSlide, toggleFullscreen, narrationVisible])
+  }, [nextSlide, previousSlide, toggleFullscreen, narrationVisible, annotationsVisible])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -425,6 +433,17 @@ export default function PresentationViewer({
           style={getSlideBackground(currentSlide)}
         >
           {renderSlideContent(currentSlide)}
+          
+          {/* Annotation Overlay - Read-only for presentation mode */}
+          {annotationsVisible && currentSlide.annotations && (
+            <AnnotationOverlay
+              slideId={currentSlide.id}
+              initialAnnotations={currentSlide.annotations}
+              isPresentationMode={true}
+              onAnnotationsChange={() => {}}
+              onSave={() => Promise.resolve()}
+            />
+          )}
         </motion.div>
 
         {/* Navigation Controls */}
@@ -470,6 +489,16 @@ export default function PresentationViewer({
               title="Toggle narration visibility (V)"
             >
               {narrationVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+            
+            <button
+              onClick={() => setAnnotationsVisible(!annotationsVisible)}
+              className={`p-2 rounded-full transition-all ${
+                annotationsVisible ? 'bg-white bg-opacity-20' : 'hover:bg-white hover:bg-opacity-20'
+              }`}
+              title="Toggle annotations visibility (A)"
+            >
+              <PenTool className="w-5 h-5" />
             </button>
 
             <div className="w-px h-6 bg-white bg-opacity-30 mx-2" />

@@ -1,12 +1,15 @@
 import CreatePresentationForm from '@/components/CreatePresentationForm'
 import SeedDataButton from '@/components/SeedDataButton'
-import { getVoiceProfiles, getFrameworks } from '@/lib/actions'
+import { getVoiceProfiles, getFrameworks, getIdea } from '@/lib/actions'
 
-export default async function CreatePage() {
+export default async function CreatePage({ searchParams }: { searchParams: { ideaId?: string } }) {
   const [voiceProfiles, frameworks] = await Promise.all([
     getVoiceProfiles(),
     getFrameworks()
   ])
+
+  // Get the idea if ideaId is provided
+  const idea = searchParams.ideaId ? await getIdea(searchParams.ideaId) : null
 
   // Check if seed data is needed
   const needsSeed = voiceProfiles.length === 0 && frameworks.length === 0
@@ -37,9 +40,10 @@ export default async function CreatePage() {
           </div>
         )}
         
-        <CreatePresentationForm 
+        <CreatePresentationForm
           initialVoiceProfiles={voiceProfiles}
           initialFrameworks={frameworks}
+          selectedIdea={idea}
         />
       </div>
     </main>

@@ -21,16 +21,19 @@ import {
   Settings,
   MessageSquare,
   FileText,
-  Copy
+  Copy,
+  PenTool
 } from 'lucide-react'
 import { SlideLayoutType } from './LayoutSelector'
 import ImagePromptModal from './ImagePromptModal'
+import AnnotationOverlay from './AnnotationOverlay'
 import { parseMarkdownToHtml, htmlToPlainText } from '@/lib/markdown-utils'
 
 interface Slide {
   id: string
   title: string
   content: string
+  annotations?: string
   slideType: string
   layout: SlideLayoutType
   order: number
@@ -95,10 +98,13 @@ export default function WysiwygSlideEditor({
   const [isEditMode, setIsEditMode] = useState(false)
   const [editTitle, setEditTitle] = useState(slide.title)
   const [editContent, setEditContent] = useState(slide.content)
+  const [editAnnotations, setEditAnnotations] = useState(slide.annotations || '')
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [hasUnsavedAnnotations, setHasUnsavedAnnotations] = useState(false)
   const [showImagePrompt, setShowImagePrompt] = useState(false)
+  const [isAnnotationMode, setIsAnnotationMode] = useState(false)
   
   const slideRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -156,14 +162,17 @@ export default function WysiwygSlideEditor({
       await onSave({
         ...slide,
         title: editTitle.trim() || slide.title,
-        content: editContent.trim() || slide.content
+        content: editContent.trim() || slide.content,
+        annotations: editAnnotations
       })
       setIsEditMode(false)
       setHasUnsavedChanges(false)
+      setHasUnsavedAnnotations(false)
     } catch (error) {
       console.error('Error saving slide:', error)
       setEditTitle(slide.title)
       setEditContent(slide.content)
+      setEditAnnotations(slide.annotations || '')
     } finally {
       setIsLoading(false)
       setIsSaving(false)
@@ -176,9 +185,11 @@ export default function WysiwygSlideEditor({
       await onSave({
         ...slide,
         title: editTitle || slide.title,
-        content: editContent || slide.content
+        content: editContent || slide.content,
+        annotations: editAnnotations
       })
       setHasUnsavedChanges(false)
+      setHasUnsavedAnnotations(false)
     } catch (error) {
       console.error('Error saving slide:', error)
     } finally {
@@ -534,7 +545,7 @@ export default function WysiwygSlideEditor({
         return (
           <div className="h-full flex flex-col items-center justify-center text-center p-16">
             <div className="max-w-4xl">
-              <div className="text-6xl text-gray-300 mb-6">"</div>
+              <div className="text-6xl text-gray-300 mb-6">&quot;</div>
               {slide.showContent !== false && renderEditableContent(
                 "text-3xl font-light italic mb-8 outline-none w-full text-center leading-relaxed",
                 contentStyle
@@ -749,6 +760,18 @@ export default function WysiwygSlideEditor({
               </button>
               
               <button
+                onClick={() => setIsAnnotationMode(!isAnnotationMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isAnnotationMode 
+                    ? 'bg-blue-500 text-white' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                title="Annotation Mode"
+              >
+                <PenTool className="w-4 h-4" />
+              </button>
+              
+              <button
                 onClick={() => onRequestDelete(slide.id)}
                 className="p-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                 title="Delete Slide"
@@ -777,12 +800,42 @@ export default function WysiwygSlideEditor({
       >
         {renderSlideContent()}
         
+        {/* Annotation Overlay */}
+        {isAnnotationMode && (
+          <AnnotationOverlay
+            slideId={slide.id}
+            initialAnnotations={editAnnotations}
+            isEditMode={true}
+            onAnnotationsChange={(annotations) => {
+              setEditAnnotations(annotations)
+              setHasUnsavedAnnotations(true)
+            }}
+            onSave={async (annotations) => {
+              await onSave({
+                ...slide,
+                annotations
+              })
+              setHasUnsavedAnnotations(false)
+            }}
+          />
+        )}
+        
         {/* Edit Mode Indicator */}
         {isEditMode && (
           <div className="absolute top-2 left-2 z-10">
             <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg shadow-lg text-xs font-medium">
               <Edit3 className="w-3 h-3" />
               <span>Editing Mode - Click text to edit</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Annotation Mode Indicator */}
+        {isAnnotationMode && (
+          <div className="absolute top-2 right-2 z-10">
+            <div className="flex items-center gap-2 bg-purple-600 text-white px-3 py-1 rounded-lg shadow-lg text-xs font-medium">
+              <PenTool className="w-3 h-3" />
+              <span>Annotation Mode - Draw on slide</span>
             </div>
           </div>
         )}

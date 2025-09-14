@@ -1,7 +1,6 @@
 import Link from "next/link"
-import { Plus, Edit3, Sparkles } from 'lucide-react'
+import { Plus, Edit3, Sparkles, Lightbulb } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import SeedDataButton from "@/components/SeedDataButton"
 
 export default function Home() {
   return (
@@ -53,6 +52,23 @@ export default function Home() {
           </div>
 
           <div className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center mb-4">
+              <Lightbulb className="w-6 h-6 text-orange-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-card-foreground mb-2">
+              My Ideas
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Capture, organize, and develop your presentation ideas
+            </p>
+            <Button variant="outline" asChild className="w-full">
+              <Link href="/ideas">
+                View Ideas
+              </Link>
+            </Button>
+          </div>
+
+          <div className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow">
             <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-4">
               <Sparkles className="w-6 h-6 text-accent-foreground" />
             </div>
@@ -66,8 +82,6 @@ export default function Home() {
               Learn More
             </Button>
           </div>
-
-          <SeedDataButton />
         </div>
       </div>
     </main>

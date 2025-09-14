@@ -1,3 +1,14 @@
 {
-  "/presentations/[id]/page": "app/presentations/[id]/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/create/page": "app/create/page.js",
+  "/ideas/page": "app/ideas/page.js",
+  "/ideas/new/page": "app/ideas/new/page.js",
+  "/page": "app/page.js",
+  "/ideas/[id]/edit/page": "app/ideas/[id]/edit/page.js",
+  "/frameworks/page": "app/frameworks/page.js",
+  "/presentations/[id]/compare/[slideId]/page": "app/presentations/[id]/compare/[slideId]/page.js",
+  "/presentations/[id]/view/page": "app/presentations/[id]/view/page.js",
+  "/presentations/page": "app/presentations/page.js",
+  "/presentations/[id]/page": "app/presentations/[id]/page.js",
+  "/voice-profiles/page": "app/voice-profiles/page.js"
 }
