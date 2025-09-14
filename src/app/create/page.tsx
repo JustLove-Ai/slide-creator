@@ -1,18 +1,15 @@
 import CreatePresentationForm from '@/components/CreatePresentationForm'
-import SeedDataButton from '@/components/SeedDataButton'
 import { getVoiceProfiles, getFrameworks, getIdea } from '@/lib/actions'
 
-export default async function CreatePage({ searchParams }: { searchParams: { ideaId?: string } }) {
+export default async function CreatePage({ searchParams }: { searchParams: Promise<{ ideaId?: string }> }) {
+  const resolvedSearchParams = await searchParams
   const [voiceProfiles, frameworks] = await Promise.all([
     getVoiceProfiles(),
     getFrameworks()
   ])
 
   // Get the idea if ideaId is provided
-  const idea = searchParams.ideaId ? await getIdea(searchParams.ideaId) : null
-
-  // Check if seed data is needed
-  const needsSeed = voiceProfiles.length === 0 && frameworks.length === 0
+  const idea = resolvedSearchParams.ideaId ? await getIdea(resolvedSearchParams.ideaId) : null
 
   return (
     <main className="min-h-screen bg-background p-8">
@@ -26,19 +23,6 @@ export default async function CreatePage({ searchParams }: { searchParams: { ide
           </p>
         </div>
         
-        {needsSeed && (
-          <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-card rounded-lg shadow-lg border p-6 text-center">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                Initialize Default Data
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                No voice profiles or frameworks found. Initialize with default templates to get started.
-              </p>
-              <SeedDataButton />
-            </div>
-          </div>
-        )}
         
         <CreatePresentationForm
           initialVoiceProfiles={voiceProfiles}
