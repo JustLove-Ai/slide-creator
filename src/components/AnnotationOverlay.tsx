@@ -86,8 +86,9 @@ export default function AnnotationOverlay({
   // Handle mouse down for shape creation
   const handleMouseDown = useCallback((event: React.MouseEvent) => {
     if (!isEditMode || toolbarState.activeTool === 'select') return
-    
+
     event.preventDefault()
+    setShowColorPicker(false) // Close color picker when starting to draw
     const coords = getPercentageCoords(event)
     
     if (toolbarState.activeTool === 'text') {
@@ -373,7 +374,7 @@ export default function AnnotationOverlay({
             key={shape.id}
             d={shape.path}
             stroke={shape.style.stroke}
-            strokeWidth={shape.style.strokeWidth * 0.1} // Scale down for percentage coordinates
+            strokeWidth={shape.style.strokeWidth * 0.3} // Better visibility for percentage coordinates
             fill="none"
             opacity={shape.style.opacity}
             strokeLinecap="round"
@@ -414,6 +415,19 @@ export default function AnnotationOverlay({
   useEffect(() => {
     setIsToolbarVisible(isEditMode)
   }, [isEditMode])
+
+  // Close color picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (showColorPicker && !target.closest('[data-color-picker]')) {
+        setShowColorPicker(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showColorPicker])
 
   return (
     <div 
@@ -456,7 +470,7 @@ export default function AnnotationOverlay({
               }
             }, '')}
             stroke={toolbarState.strokeColor}
-            strokeWidth={toolbarState.strokeWidth * 0.1} // Scale down for percentage coordinates
+            strokeWidth={toolbarState.strokeWidth * 0.3} // Better visibility for percentage coordinates
             fill="none"
             opacity={toolbarState.opacity}
             strokeLinecap="round"
@@ -490,7 +504,10 @@ export default function AnnotationOverlay({
                 ].map(({ tool, icon: Icon, title }) => (
                   <button
                     key={tool}
-                    onClick={() => setToolbarState(prev => ({ ...prev, activeTool: tool as AnnotationTool }))}
+                    onClick={() => {
+                      setToolbarState(prev => ({ ...prev, activeTool: tool as AnnotationTool }))
+                      setShowColorPicker(false) // Close color picker when switching tools
+                    }}
                     className={`p-2 rounded hover:bg-muted transition-colors ${
                       toolbarState.activeTool === tool ? 'bg-primary text-primary-foreground' : ''
                     }`}
@@ -502,7 +519,7 @@ export default function AnnotationOverlay({
               </div>
 
               {/* Color Controls */}
-              <div className="flex items-center gap-2 pr-2 border-r border-border">
+              <div className="flex items-center gap-2 pr-2 border-r border-border" data-color-picker>
                 <button
                   onClick={() => setShowColorPicker(!showColorPicker)}
                   className="p-2 rounded hover:bg-muted transition-colors"
@@ -510,7 +527,7 @@ export default function AnnotationOverlay({
                 >
                   <Palette className="w-4 h-4" />
                 </button>
-                <div 
+                <div
                   className="w-6 h-6 rounded border-2 border-border"
                   style={{ backgroundColor: toolbarState.strokeColor }}
                 />
@@ -547,21 +564,45 @@ export default function AnnotationOverlay({
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -10, opacity: 0 }}
                   className="absolute top-full left-0 mt-2 bg-background border border-border rounded-lg shadow-lg p-3 min-w-[200px]"
+                  data-color-picker
                 >
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Stroke Color</label>
-                      <div className="flex gap-2 mt-1">
-                        {['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#000000'].map(color => (
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        {['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#000000', '#ffffff'].map(color => (
                           <button
                             key={color}
                             onClick={() => setToolbarState(prev => ({ ...prev, strokeColor: color }))}
                             className={`w-6 h-6 rounded border-2 ${
                               toolbarState.strokeColor === color ? 'border-foreground' : 'border-border'
-                            }`}
+                            } ${color === '#ffffff' ? 'border-gray-300' : ''}`}
                             style={{ backgroundColor: color }}
                           />
                         ))}
+                      </div>
+
+                      <div className="mt-2">
+                        <label className="text-xs font-medium text-muted-foreground">Custom Color</label>
+                        <div className="flex gap-2 mt-1">
+                          <input
+                            type="color"
+                            value={toolbarState.strokeColor}
+                            onChange={(e) => setToolbarState(prev => ({ ...prev, strokeColor: e.target.value }))}
+                            className="w-8 h-8 rounded border border-border cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={toolbarState.strokeColor}
+                            onChange={(e) => {
+                              if (/^#[0-9A-F]{6}$/i.test(e.target.value) || e.target.value.length <= 7) {
+                                setToolbarState(prev => ({ ...prev, strokeColor: e.target.value }))
+                              }
+                            }}
+                            className="flex-1 px-2 py-1 text-xs border border-border rounded bg-background text-foreground"
+                            placeholder="#000000"
+                          />
+                        </div>
                       </div>
                     </div>
                     

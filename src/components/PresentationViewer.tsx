@@ -434,11 +434,12 @@ export default function PresentationViewer({
         >
           {renderSlideContent(currentSlide)}
           
-          {/* Annotation Overlay - Read-only for presentation mode */}
-          {annotationsVisible && currentSlide.annotations && (
+          {/* Annotation Overlay - Enabled for presentation mode */}
+          {annotationsVisible && (
             <AnnotationOverlay
               slideId={currentSlide.id}
               initialAnnotations={currentSlide.annotations}
+              isEditMode={true}
               isPresentationMode={true}
               onAnnotationsChange={() => {}}
               onSave={() => Promise.resolve()}

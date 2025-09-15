@@ -28,6 +28,8 @@ import { SlideLayoutType } from './LayoutSelector'
 import ImagePromptModal from './ImagePromptModal'
 import AnnotationOverlay from './AnnotationOverlay'
 import { parseMarkdownToHtml, htmlToPlainText } from '@/lib/markdown-utils'
+import { getThemeColorsForSlide } from '@/lib/theme-utils'
+import { useTheme } from 'next-themes'
 
 interface Slide {
   id: string
@@ -75,11 +77,11 @@ interface WysiwygSlideEditorProps {
   onOpenContent?: () => void
 }
 
-export default function WysiwygSlideEditor({ 
-  slide, 
+export default function WysiwygSlideEditor({
+  slide,
   presentation,
-  onSave, 
-  onDelete, 
+  onSave,
+  onDelete,
   onRequestDelete,
   onDuplicate,
   onRegenerate,
@@ -105,53 +107,67 @@ export default function WysiwygSlideEditor({
   const [hasUnsavedAnnotations, setHasUnsavedAnnotations] = useState(false)
   const [showImagePrompt, setShowImagePrompt] = useState(false)
   const [isAnnotationMode, setIsAnnotationMode] = useState(false)
-  
+
   const slideRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { theme } = useTheme()
 
   const getSlideBackground = () => {
+    const systemTheme = (theme === 'dark' ? 'dark' : 'light') as 'light' | 'dark'
+    const themeColors = getThemeColorsForSlide(slide, presentation, systemTheme)
+
+    if (slide.backgroundColor) {
+      return { backgroundColor: slide.backgroundColor }
+    }
+
     switch (slide.layout) {
       case 'TITLE_COVER':
-        return { 
-          background: `linear-gradient(135deg, ${presentation.primaryColor}, ${presentation.secondaryColor})` 
+      case 'TITLE_ONLY':
+        return {
+          background: `linear-gradient(135deg, ${presentation.primaryColor}, ${presentation.secondaryColor})`
         }
       case 'IMAGE_BACKGROUND':
       case 'IMAGE_OVERLAY':
-        return { 
+        return {
           backgroundImage: slide.imageUrl ? `url(${slide.imageUrl})` : `linear-gradient(135deg, ${presentation.primaryColor}20, ${presentation.secondaryColor}20)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }
-      default:
-        // For other layouts, apply theme color if set
-        if (slide.backgroundColor) {
-          return { backgroundColor: slide.backgroundColor }
+      case 'QUOTE_LARGE':
+        return {
+          background: `linear-gradient(45deg, ${presentation.primaryColor}15, ${presentation.secondaryColor}15)`
         }
-        return { background: '#ffffff' }
+      case 'STATISTICS_GRID':
+        return {
+          background: `linear-gradient(135deg, ${presentation.primaryColor}08, ${presentation.secondaryColor}08)`
+        }
+      default:
+        return { backgroundColor: themeColors.backgroundColor }
     }
   }
 
   const getTextStyle = (isTitle = false) => {
+    const systemTheme = (theme === 'dark' ? 'dark' : 'light') as 'light' | 'dark'
+    const themeColors = getThemeColorsForSlide(slide, presentation, systemTheme)
+
     let color
-    
-    // Use theme-aware colors if available
+
     if (isTitle && slide.headingColor) {
       color = slide.headingColor
     } else if (!isTitle && slide.textColor) {
       color = slide.textColor
     } else {
-      // Fallback to layout-based colors
-      color = slide.layout === 'TITLE_COVER' || slide.layout === 'IMAGE_BACKGROUND' ? 'white' : '#1f2937'
+      color = isTitle ? themeColors.headingColor : themeColors.textColor
     }
-    
+
     const align = slide.textAlign?.toLowerCase() || 'left'
-    
+
     return {
       color,
       textAlign: align as any,
-      fontFamily: presentation.fontFamily === 'Inter' ? 'system-ui, sans-serif' : 
-                 presentation.fontFamily === 'Times' ? 'serif' : 
-                 presentation.fontFamily === 'Courier' ? 'monospace' : 'system-ui, sans-serif'
+      fontFamily: presentation.fontFamily === 'Inter' ? 'system-ui, sans-serif' :
+                  presentation.fontFamily === 'Georgia' ? 'Georgia, serif' :
+                  presentation.fontFamily
     }
   }
 

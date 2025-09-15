@@ -122,6 +122,277 @@ TITLE SLIDE REQUIREMENTS:
 
 IMPORTANT: Return ONLY the JSON array, no additional text or explanations.`
 
+export const VIRAL_SLIDE_GENERATION_PROMPT = `Generate presentation slides optimized for maximum engagement using viral psychology principles:
+
+TOPIC: {topic}
+PRESENTATION TITLE: {title}
+
+{voiceContext}
+
+{frameworkContext}
+
+VIRAL PSYCHOLOGY REQUIREMENTS:
+1. EXPECTATIONS VS REALITY: Each slide must exceed what the previous slide set up as expectations. The goal is reality constantly beating expectations.
+
+2. HOOK ARCHETYPE SELECTION: Choose the best hook type for this topic:
+   - FORTUNE_TELLER: Position present vs future, trends, predictions ("This will change [topic] forever")
+   - CONTRARIAN: Challenge common beliefs ("Everything you know about [topic] is wrong")
+   - INVESTIGATOR: Reveal hidden secrets ("The [industry] secret nobody talks about")
+   - EXPERIMENTER: Show process/results ("I tested [method] for 30 days")
+   - TEACHER: Share expert insights ("What [expert] taught me about [topic]")
+   - MAGICIAN: Visual attention grabber ("Check this out" + surprising demonstration)
+
+3. VALUE PROGRESSION (2-1-3-4 METHOD - CRITICAL):
+   For your main content points, arrange using this EXACT order:
+   - Point 1: Your SECOND best insight (hooks them with good value)
+   - Point 2: Your BEST insight (creates upward pattern, exceeds expectations)
+   - Point 3: Your third best insight (maintains high value)
+   - Point 4+: Remaining insights in descending order
+
+   NEVER lead with your best insight - this kills the value progression curve.
+
+4. RE-HOOKING: Between major points, add curiosity bridges:
+   - "That was powerful, but if you don't couple it with this next thing, the magic is lost"
+   - "Here's where it gets interesting..."
+   - "But wait, there's something even more important..."
+   - "Most people stop here, but this next part changes everything..."
+
+5. CLICK CONFIRMATION: First slide after title must confirm and exceed the promise made in the title.
+
+6. CONTRARIAN ELEMENTS: Challenge at least one common belief about the topic.
+
+7. CURIOSITY GAPS: Each slide should create curiosity for the next slide.
+
+VIRAL CONTENT STRUCTURE:
+- Title slide with compelling subtitle that sets expectations
+- Hook slide using one of the 6 archetypes (creates massive contrast)
+- Context setup (establish current reality/common belief)
+- Second-best insight (Point 1 - hooks with value)
+- Best insight (Point 2 - blows their mind)
+- Re-hook transition (maintains momentum)
+- Third-best insight (Point 3 - sustains high value)
+- Additional insights in descending value order
+- Conclusion that reinforces how reality beat expectations
+- Next steps with strong call to action
+
+OUTPUT FORMAT:
+Return a JSON array of slide objects with this exact structure:
+[
+  {
+    "title": "slide title",
+    "content": "slide content in markdown format with proper headings and bullet points",
+    "slideType": "TITLE|INTRO|CONTENT|CONCLUSION|NEXT_STEPS",
+    "layout": "TEXT_ONLY|TITLE_COVER|TITLE_ONLY|TEXT_IMAGE_LEFT|TEXT_IMAGE_RIGHT|IMAGE_FULL|BULLETS_IMAGE|TWO_COLUMN|IMAGE_BACKGROUND|TIMELINE|QUOTE_LARGE|STATISTICS_GRID|IMAGE_OVERLAY|SPLIT_CONTENT|COMPARISON",
+    "order": 1,
+    "viralElements": {
+      "hookType": "FORTUNE_TELLER|CONTRARIAN|INVESTIGATOR|EXPERIMENTER|TEACHER|MAGICIAN",
+      "valueRank": 1,
+      "expectationBeat": "How this slide exceeds expectations"
+    }
+  }
+]
+
+CONTENT REQUIREMENTS:
+- Use markdown formatting (##, ###, -, etc.)
+- Create engaging, actionable content that beats expectations
+- Each slide must serve the viral psychology framework
+- Make content surprising and contrarian where possible
+- Include specific examples and shocking insights
+- Use concrete details over abstract concepts
+- Create curiosity loops that keep viewers hooked
+- Apply the 2-1-3-4 value progression religiously
+
+TITLE SLIDE REQUIREMENTS:
+- Include presentation title with compelling subtitle
+- Subtitle should hint at the surprise/contrarian angle
+- Format: "# Main Title\n\n## Subtitle that creates curiosity"
+- Set expectations that will be exceeded
+
+VIRAL SLIDE REQUIREMENTS: Return ONLY the JSON array, no additional text or explanations.`
+
+export const HOOK_EXAMPLES_PROMPT = `Generate 6 different hook examples for this specific idea, showing how it would look using each of the 6 viral hook archetypes:
+
+**Topic:** {topic}
+**Title:** {title}
+{voiceContext}
+
+For each of the 6 hook types below, create a specific example showing how THIS EXACT IDEA would be presented:
+
+1. **Fortune Teller Hook** - Pits today vs tomorrow to spark curiosity about what's coming
+2. **Experimenter Hook** - Uses real-world experiments and data to prove points
+3. **Teacher Hook** - Breaks down complex topics into simple, understandable pieces
+4. **Magician Hook** - Reveals surprising secrets and insider knowledge
+5. **Investigator Hook** - Uncovers hidden truths and exposes misconceptions
+6. **Contrarian Hook** - Challenges common beliefs with counterintuitive insights
+
+For each hook type, provide:
+- A specific example title for this idea using that hook
+- The actual hook/opening line that would grab attention
+- Why this particular hook works for this specific topic
+
+Also recommend which hook would work best for this specific idea and explain why.
+
+Return as JSON:
+{
+  "hookExamples": [
+    {
+      "hookType": "Fortune Teller Hook",
+      "hookDescription": "Pits today vs tomorrow to spark curiosity about what's coming",
+      "exampleTitle": "specific title for this idea",
+      "exampleHook": "actual opening hook line",
+      "whyItWorks": "explanation of why this works for this topic"
+    }
+    // ... 5 more examples
+  ],
+  "recommendedHook": "Fortune Teller Hook",
+  "recommendedRationale": "why this hook is best for this specific idea"
+}`;
+
+export const MAIN_POINTS_PROMPT = `Generate main points for this presentation using the chosen hook angle:
+
+**Topic:** {topic}
+**Title:** {title}
+**Chosen Hook:** {hookType}
+{voiceContext}
+
+Based on the {hookType} approach, generate 3-5 main points that will be the headings/questions/myths for this presentation. These should be the specific talking points that will engage the audience and deliver value.
+
+Each point should be:
+- A clear, compelling heading or question that hooks the audience
+- Something that can be expanded into a full section
+- Aligned with the {hookType} psychology
+- Designed to exceed audience expectations
+
+Return as JSON:
+{
+  "mainPoints": [
+    {
+      "title": "compelling heading or question",
+      "rationale": "why this point is important and how it fits the hook",
+      "surprise": "what unexpected insight or value this provides"
+    }
+  ]
+}`;
+
+export const POINT_BRAINSTORMING_PROMPT = `Brainstorm main points for a presentation on the following topic and suggest the best hook angle:
+
+TOPIC: {topic}
+PRESENTATION TITLE: {title}
+
+{voiceContext}
+
+TASK 1: HOOK ANGLE SELECTION
+Analyze this topic and choose the most effective hook angle from these 6 options:
+
+1. FORTUNE_TELLER - Position present vs future, predictions, trends
+   Best for: Technology, industry changes, future insights
+   Hook example: "This will change [topic] forever"
+
+2. EXPERIMENTER - Show test results, demos, proof of concept
+   Best for: Case studies, testing, personal experiments
+   Hook example: "I tried [method] for 30 days - here's what happened"
+
+3. TEACHER - Extract lessons, share expertise, educational content
+   Best for: Skill transfer, frameworks, expert insights
+   Hook example: "3 rules I learned from [expert] that [transformation]"
+
+4. MAGICIAN - Visual demonstrations, wow factor, surprising reveals
+   Best for: Demos, transformations, impressive results
+   Hook example: "Check this out" + immediate visual demonstration
+
+5. INVESTIGATOR - Reveal secrets, insider knowledge, hidden insights
+   Best for: Behind-the-scenes, insider information, exposing truths
+   Hook example: "The [industry] secret nobody mentions"
+
+6. CONTRARIAN - Challenge common wisdom, thought leadership
+   Best for: Paradigm shifts, going against status quo
+   Hook example: "Stop [common practice] - here's why it's wrong"
+
+TASK 2: MAIN POINTS BRAINSTORMING
+Generate 3-5 main points that would be covered in this presentation. For each point provide:
+- The main insight/lesson/discovery
+- Why this point matters (1-2 sentences)
+- How it connects to the overall topic
+
+Apply viral psychology:
+- Make points surprising and contrarian where possible
+- Include insider knowledge or secrets
+- Challenge common assumptions
+- Use specific examples over abstract concepts
+
+OUTPUT FORMAT:
+Return a JSON object with this structure:
+{
+  "recommendedHook": "FORTUNE_TELLER|EXPERIMENTER|TEACHER|MAGICIAN|INVESTIGATOR|CONTRARIAN",
+  "hookRationale": "Brief explanation of why this hook works best for this topic",
+  "mainPoints": [
+    {
+      "title": "Point title/insight",
+      "rationale": "Why this point is important and worth including (1-2 sentences)",
+      "surprise": "What makes this point surprising or contrarian"
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY the JSON object, no additional text.`
+
+export const GENERATE_SLIDES_FROM_POINTS_PROMPT = `Generate presentation slides using the confirmed hook angle and main points:
+
+TOPIC: {topic}
+PRESENTATION TITLE: {title}
+HOOK ANGLE: {hookAngle}
+CONFIRMED POINTS: {confirmedPoints}
+
+{voiceContext}
+
+{frameworkContext}
+
+STRUCTURE REQUIREMENTS:
+Follow the YouTube viral format exactly:
+
+1. TITLE SLIDE - Compelling title with curiosity-inducing subtitle
+2. HOOK SLIDE - Use the specified hook angle to create massive contrast
+3. SETUP SLIDE - Establish current reality/context that will be disrupted
+4. For each main point, create 3 slides:
+   - WHAT slide - Define the insight/discovery/lesson
+   - WHY slide - Explain why this matters and its importance
+   - HOW slide - Show how to apply or implement this insight
+5. TRANSITION SLIDES - Between each main point, add re-hook transitions
+6. 3Cs CONCLUSION:
+   - CALL slide - What you're asking them to do
+   - CHALLENGE slide - Challenge them to take action/think differently
+   - CLOSE slide - Final step and strong close
+
+VIRAL PSYCHOLOGY REQUIREMENTS:
+- Use the confirmed main points in the order provided
+- Each slide must exceed expectations set by the previous slide
+- Include re-hook transitions: "Here's where it gets interesting...", "But there's something even more important...", etc.
+- Apply 2-1-3-4 value progression if points aren't already ordered
+- Create curiosity gaps that pull viewers forward
+- Challenge assumptions and provide contrarian insights
+- Use specific examples over abstract concepts
+
+TRANSITION SLIDES:
+Between main points, include transition slides with re-hooks like:
+- "That was powerful, but if you don't couple it with this next thing, the magic is lost..."
+- "Here's where it gets really interesting..."
+- "Most people stop here, but this next part changes everything..."
+
+OUTPUT FORMAT:
+Return a JSON array of slide objects with this exact structure:
+[
+  {
+    "title": "slide title",
+    "content": "slide content in markdown format with proper headings and bullet points",
+    "speakerNotes": "comprehensive word-for-word speaker notes that the presenter will read. Include smooth transitions, explanations of each point, and engaging delivery. Make it conversational and complete enough that the presenter never gets stuck.",
+    "slideType": "TITLE|INTRO|CONTENT|CONCLUSION|NEXT_STEPS",
+    "layout": "TEXT_ONLY|TITLE_COVER|TITLE_ONLY|TEXT_IMAGE_LEFT|TEXT_IMAGE_RIGHT|IMAGE_FULL|BULLETS_IMAGE|TWO_COLUMN|IMAGE_BACKGROUND|TIMELINE|QUOTE_LARGE|STATISTICS_GRID|IMAGE_OVERLAY|SPLIT_CONTENT|COMPARISON",
+    "order": 1
+  }
+]
+
+IMPORTANT: Return ONLY the JSON array, no additional text or explanations.`
+
 export const SLIDE_REGENERATION_PROMPT = `Regenerate and enhance the following slide:
 
 ORIGINAL SLIDE:
